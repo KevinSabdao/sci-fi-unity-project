@@ -4,10 +4,17 @@ public class InteractionManager : MonoBehaviour
 {
     public static InteractionManager Instance { get; set; }
 
-    public Item hoveredItem = null;
+    public int interactDistance;
+
+    // Nothing should ever access the hovered item
+    // The manager accesses other areas USING the hovered item
+    private Item hoveredItemCurrent = null;
+    private Item hoveredItemPrev = null;
+    private const KeyCode pickupKey = KeyCode.F;
 
     private void Awake()
     {
+        // Create singleton of InteractionManager
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -23,27 +30,38 @@ public class InteractionManager : MonoBehaviour
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit))
+        // If nothing was hit or if the interacted object was too far away
+        if (!Physics.Raycast(ray, out hit) || hit.distance > interactDistance)
         {
-            GameObject objectHitByRaycast = hit.transform.gameObject;
+            if (hoveredItemCurrent) { hoveredItemCurrent.GetComponent<Outline>().enabled = false; }
+            return;
+        } 
 
-            if (objectHitByRaycast.GetComponent<Item>() && !objectHitByRaycast.GetComponent<Item>().isActive)
-            {
-                hoveredItem = objectHitByRaycast.gameObject.GetComponent<Item>();
-                hoveredItem.GetComponent<Outline>().enabled = true;
+        GameObject objectHitByRaycast = hit.transform.gameObject;
 
-                if (Input.GetKeyDown(KeyCode.F))
-                {
-                    Inventory.Instance.PickupItem(objectHitByRaycast.gameObject);
-                }
-            }
-            else
+        // Select item for interaction
+        if (objectHitByRaycast.GetComponent<Item>() && !objectHitByRaycast.GetComponent<Item>().isActive)
+        {
+            // Highlight item
+            hoveredItemPrev = hoveredItemCurrent;
+            hoveredItemCurrent = objectHitByRaycast.gameObject.GetComponent<Item>();
+            hoveredItemCurrent.GetComponent<Outline>().enabled = true;
+
+            // Unhighlight previous item if immediately switching from looking at one to another
+            if (hoveredItemPrev && hoveredItemPrev != hoveredItemCurrent)
             {
-                if (hoveredItem)
-                {
-                    hoveredItem.GetComponent<Outline>().enabled = false;
-                }
+                hoveredItemPrev.GetComponent<Outline>().enabled = false;
             }
+
+            // Interact with object (can be changed for other objects if needed)
+            if (Input.GetKeyDown(pickupKey))
+            {
+                Inventory.Instance.PickupItem(objectHitByRaycast.gameObject);
+            }
+        }
+        else if (hoveredItemCurrent) // Remove highlight if looking at nothing
+        {
+            hoveredItemCurrent.GetComponent<Outline>().enabled = false;
         }
     }
 }
