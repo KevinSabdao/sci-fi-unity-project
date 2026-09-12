@@ -10,8 +10,8 @@ public class Weapon : Item
     public int durability;
 
     // Shooting
-    public bool isShooting, readyToShoot;
-    bool allowReset = true;
+    private bool isShooting, readyToShoot;
+    private bool allowReset = true;
     public float shootingDelay = 2f;
 
     // Burst
@@ -52,12 +52,12 @@ public class Weapon : Item
         burstBulletsLeft = bulletsPerBurst;
     }
 
-    void Update()
+    private void Update()
     {
         if (!isActive) return;
 
         // Implement item pickup
-        base.checkRequiredKeyPress();
+        base.CheckRequiredKeyPress();
 
         switch (currentShootingMode)
         {
@@ -125,7 +125,7 @@ public class Weapon : Item
         allowReset = true;
     }
 
-    public Vector3 CalculateDirectionAndSpread()
+    private Vector3 CalculateDirectionAndSpread()
     {
         // Shooting from the middle of the screen to check where are we pointing at
         Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
@@ -151,6 +151,7 @@ public class Weapon : Item
         // Returning the shooting direction and spread
         return direction + new Vector3(x, y, 0);
     }
+
     private IEnumerator DestroyBulletAfterTime(GameObject bullet, float delay)
     {
         yield return new WaitForSeconds(delay);

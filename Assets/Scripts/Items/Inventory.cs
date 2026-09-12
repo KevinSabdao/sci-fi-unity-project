@@ -38,6 +38,7 @@ public class Inventory : MonoBehaviour
 
     private void Update()
     {
+        // Temporary before a proper system is implemented
         if (Input.GetKeyDown(KeyCode.R))
         {
             CycleSlots(ScrollDirection.Right);
