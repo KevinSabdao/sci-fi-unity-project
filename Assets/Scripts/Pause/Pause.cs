@@ -6,16 +6,17 @@ using UnityEngine.SceneManagement;
 public class PauseMenu : MonoBehaviour
 {
     public static bool isPaused = false;
-    [SerializeField] GameObject gameUi;
-    public GameObject pauseMenuUi;
     [SerializeField] GameObject player;
     [SerializeField] GameObject pauseCamera;
 
 
     //Previous implementation of invertoryList to print inventory 
     //[SerializeField] GameObject inventoryList;
-    
-    
+
+    //Previous implementation of switching Ui
+    //[SerializeField] GameObject gameUi;
+    //public GameObject pauseMenuUi;
+
     // Update is called once per frame
     void Update()
     {
@@ -43,11 +44,14 @@ public class PauseMenu : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         pauseCamera.SetActive(false);
-        pauseMenuUi.SetActive(false);
+        
         Time.timeScale = 1f;
         AudioListener.pause = false;
         isPaused = false;
-        gameUi.SetActive(true);
+
+        //Previous implementation of switching Ui
+        //gameUi.SetActive(true);
+        //pauseMenuUi.SetActive(false);
     }
     public void Pause()
     {
@@ -60,11 +64,14 @@ public class PauseMenu : MonoBehaviour
         pausePos.x += 5;
         pauseCamera.transform.position = pausePos;
 
-        pauseMenuUi.SetActive(true);
+        
         Time.timeScale = 0f;
         AudioListener.pause = true;
         isPaused = true;
-        gameUi.SetActive(false);
+
+        //Previous implementation of switching Ui
+        //gameUi.SetActive(false);
+        //pauseMenuUi.SetActive(true);
     }
     //Old system to go switch to main menu
     //public void LoadMainMenu(String sceneName)
