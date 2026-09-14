@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 public abstract class Item : MonoBehaviour
 {
@@ -16,6 +17,11 @@ public abstract class Item : MonoBehaviour
     }
 
     public bool isActive { get; set; }
+    public Sprite inventoryIcon;
+
+    public string itemName;
+    [TextArea]
+    public string description;
 
     // Names of the left and right arms (for held items)
     private readonly ItemSlot itemSlotLeft = new ItemSlot("LeftArm", KeyCode.Mouse0);

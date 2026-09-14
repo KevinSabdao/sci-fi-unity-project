@@ -321,14 +321,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bee782ddbab121c79e9181a5638006e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weapon
-  isActiveWeapon: 0
+  inventoryIcon: {fileID: 0}
+  spawnPosition: {x: 0, y: 0, z: 0}
+  spawnRotation: {x: 0, y: 180, z: 0}
   playerCamera: {fileID: 0}
-  weaponSlotLeft: {fileID: 0}
-  weaponSlotRight: {fileID: 0}
   durabilityMax: 50
   durability: 0
-  isShooting: 0
-  readyToShoot: 0
   shootingDelay: 0.6
   bulletsPerBurst: 5
   burstBulletsLeft: 0
@@ -337,8 +335,6 @@ MonoBehaviour:
   bulletSpawn: {fileID: 3057735772669905229}
   bulletVelocity: 100
   bulletPrefabLifeTime: 3
-  spawnPosition: {x: 0, y: 0, z: 0}
-  spawnRotation: {x: 0, y: 180, z: 0}
   thisWeaponModel: 0
   currentShootingMode: 0
 --- !u!114 &4830372009491033508
