@@ -107,3 +107,6 @@ InitTestScene*.unity*
 
 # Testing scene - Daniel
 /[Aa]ssets/[Ss]cenes/Testing.*
+
+# Testing Scene - Mitchell
+/[Aa]ssets/[Ss]cenes/Test.*
