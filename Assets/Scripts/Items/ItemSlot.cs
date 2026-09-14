@@ -5,33 +5,32 @@ using UnityEngine.EventSystems;
 
 public class ItemSlot : MonoBehaviour, IPointerClickHandler
 {
-    internal string name;
-    internal KeyCode keyPress;
+    private string itemName;
+    private KeyCode keyPress;
+    private string description;
     internal GameObject item;
-    internal string description;
 
-    private bool isFull;
     private Image image;
 
     public GameObject selectedSlot;
     public bool thisItemSelected;
 
-    public Image ItemDescriptionImage;
-    public TMP_Text ItemDescriptionName;
-    public TMP_Text ItemDescriptionText;
+    internal static Image ItemDescriptionImage;
+    internal static TMP_Text ItemDescriptionName;
+    internal static TMP_Text ItemDescriptionText;
 
-    public bool isArm = false;
-    public int storedIndex;
-    private static bool itemIsSelected = false;
+    internal bool isArm = false;
+    internal int storedIndex;
+    internal static bool itemIsSelected = false;
     private static ItemSlot itemSelected;
 
     public void Start()
     {
         this.selectedSlot = this.transform.GetChild(0).gameObject;
-        this.ItemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
-        this.ItemDescriptionImage.enabled = false;
-        this.ItemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
-        this.ItemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        ItemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
+        ItemDescriptionImage.enabled = false;
+        ItemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
+        ItemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
     }
     
     public ItemSlot(string name, KeyCode keyPress)
@@ -44,7 +43,6 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
     {
         this.name = pickedUpItem.GetComponent<Item>().itemName;
         this.item = pickedUpItem;
-        this.isFull = true;
         this.description = pickedUpItem.GetComponent<Item>().description;
 
         this.image = this.transform.GetChild(1).GetComponent<Image>();
@@ -62,21 +60,33 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnLeftClick()
     {
-        if (itemIsSelected && this.isArm)
+        if (!this.item) { return; }
+
+        if (itemIsSelected && this == itemSelected)
         {
-            Inventory.Instance.SwapItems(this, itemSelected);
-            itemIsSelected = false;
+            Inventory.Instance.DeselectAllSlots();
+        }
+        else if (itemIsSelected && (this.isArm || itemSelected.isArm))
+        {
+            if (this.isArm)
+            {
+                Inventory.Instance.SwapItems(this, itemSelected);
+            }
+            else if (itemSelected.isArm)
+            {
+                Inventory.Instance.SwapItems(itemSelected, this);
+            }
         }
         else
         {
             Inventory.Instance.DeselectAllSlots();
-            selectedSlot.SetActive(true);
-            thisItemSelected = true;
+            this.selectedSlot.SetActive(true);
+            this.thisItemSelected = true;
 
-            this.ItemDescriptionName.text = this.name;
-            this.ItemDescriptionText.text = this.description;
-            if (this.image) { this.ItemDescriptionImage.sprite = this.image.sprite; }
-            this.ItemDescriptionImage.enabled = true;
+            ItemDescriptionName.text = this.name;
+            ItemDescriptionText.text = this.description;
+            if (this.image) { ItemDescriptionImage.sprite = this.image.sprite; }
+            ItemDescriptionImage.enabled = true;
 
             itemIsSelected = true;
             itemSelected = this;

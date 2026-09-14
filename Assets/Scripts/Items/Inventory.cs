@@ -9,10 +9,11 @@ public class Inventory : MonoBehaviour
     public List<GameObject> startingItems;
     public List<GameObject> itemSlots;
     public List<GameObject> activeItemSlots;
+    public int maxItemSlots; // Maximum the UI can handle is 15 :/
 
     // Inventory UI
     public GameObject InventoryUI;
-    public GameObject ItemSlot;
+    public GameObject ItemSlotPrefab;
     public GameObject ArmSlots;
     public List<GameObject> activeArmSlots;
     public GameObject StorageSlots;
@@ -40,7 +41,7 @@ public class Inventory : MonoBehaviour
         for (int i = 0; i < this.transform.GetChild(0).childCount - 1; i++)
         {
             activeItemSlots.Add(itemSlots[i]);
-            (Instantiate(ItemSlot) as GameObject).transform.SetParent(ArmSlots.transform);
+            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(ArmSlots.transform);
             ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>().isArm = true;
             activeArmSlots.Add(ArmSlots.transform.GetChild(i).gameObject);
         }
@@ -57,17 +58,7 @@ public class Inventory : MonoBehaviour
 
     private void Update()
     {
-        // Temporary before a proper system is implemented
-        // if (Input.GetKeyDown(KeyCode.R))
-        // {
-        //     CycleSlots(ScrollDirection.Right);
-        // }
-        // else if (Input.GetKeyDown(KeyCode.Q))
-        // {
-        //     CycleSlots(ScrollDirection.Left);
-        // }
-        // else if (Input.GetKeyDown(KeyCode.E))
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Input.GetKeyDown(KeyCode.E) && inactiveSlots.Count < maxItemSlots)
         {
             menuActivated = !menuActivated;
             InventoryUI.SetActive(menuActivated);
@@ -95,7 +86,7 @@ public class Inventory : MonoBehaviour
         }
 
         // Put item into storage if no active slots are available
-        (Instantiate(ItemSlot) as GameObject).transform.SetParent(StorageSlots.transform, false);
+        (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
         inactiveSlots.Add(StorageSlots.transform.GetChild(inactiveSlots.Count).gameObject);
         AddItemIntoSlot(pickedUpItem, itemSlots[itemSlots.Count - 1], inactiveSlots.Count - 1, false);
     }
@@ -123,21 +114,6 @@ public class Inventory : MonoBehaviour
         itemAdded.transform.localRotation = Quaternion.Euler(item.spawnRotation.x, item.spawnRotation.y, item.spawnRotation.z);
     }
 
-    public void DeselectAllSlots()
-    {
-        foreach (GameObject slot in activeArmSlots)
-        {
-            slot.GetComponent<ItemSlot>().selectedSlot.SetActive(false);
-            slot.GetComponent<ItemSlot>().thisItemSelected = false;
-        }
-
-        foreach (GameObject slot in inactiveSlots)
-        {
-            slot.GetComponent<ItemSlot>().selectedSlot.SetActive(false);
-            slot.GetComponent<ItemSlot>().thisItemSelected = false;
-        }
-    }
-
     public void SwapItems(ItemSlot itemArm, ItemSlot itemStorage)
     {
         GameObject itemArmItem = itemArm.item;
@@ -153,7 +129,7 @@ public class Inventory : MonoBehaviour
         }
         else
         {
-            (Instantiate(ItemSlot) as GameObject).transform.SetParent(StorageSlots.transform, false);
+            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
             inactiveSlots.Add(StorageSlots.transform.GetChild(inactiveSlots.Count).gameObject);
             AddItemIntoSlot(itemArmItem, itemSlots[itemSlots.Count - 1], inactiveSlots.Count - 1, false);
 
@@ -167,44 +143,37 @@ public class Inventory : MonoBehaviour
         {
             inactiveSlots[i].GetComponent<ItemSlot>().storedIndex = i;
         }
+
+        DeselectAllSlots();
     }
 
-    // private void CycleSlots(ScrollDirection scrollDirection)
-    // {
-    //     int lastIndexWithItem = itemSlots.Count;
+    public void DeselectAllSlots()
+    {
+        ItemSlot itemSlot;
 
-    //     int scrollFactor = (scrollDirection == ScrollDirection.Right) ? itemSlots[itemSlots.Count - 1].transform.childCount + activeItemSlots.Count - 1 : 1;
+        // Deselect all arm slots
+        foreach (GameObject slot in activeArmSlots)
+        {
+            itemSlot = slot.GetComponent<ItemSlot>();
+            if (itemSlot.selectedSlot) { itemSlot.selectedSlot.SetActive(false); }
+            itemSlot.thisItemSelected = false;
+        }
 
-    //     for (int _ = 0; _ < scrollFactor; _++) // scroll items - 1 times if scrolling right
-    //     {
-    //         for (int i = itemSlots.Count - 1; i >= 0; i--)
-    //         {
-    //             if (itemSlots[i].transform.childCount > 0)
-    //             {
-    //                 AddItemIntoSlot(
-    //                     itemSlots[i].transform.GetChild(0).gameObject,
-    //                     itemSlots[(i + lastIndexWithItem - 1) % lastIndexWithItem],
-    //                     (i + lastIndexWithItem - 1) % lastIndexWithItem, // Cycle through item slots
-    //                     ((i + lastIndexWithItem - 1) % lastIndexWithItem) < activeItemSlots.Count
-    //                 );
-    //             }
-    //             else
-    //             {
-    //                 lastIndexWithItem = i;
-    //             }
-    //         }
-    //     }
+        // Deselect all inventory slots
+        foreach (GameObject slot in inactiveSlots)
+        {
+            itemSlot = slot.GetComponent<ItemSlot>();
+            if (itemSlot.selectedSlot) { itemSlot.selectedSlot.SetActive(false); }
+            itemSlot.thisItemSelected = false;
+        }
 
-        // for (int i = 0; i < ; i++)
-        // {
-        //     AddItemIntoSlot(
-        //         inactiveSlots[i].gameObject,
-        //         itemSlots[itemSlots.Count - 1],
-        //         activeArmSlots.Count + i,
-        //         false
-        //     );
-        // }
-    // }
+        // Remove name and description text
+        ItemSlot.ItemDescriptionImage.enabled = false;
+        ItemSlot.ItemDescriptionName.text = "";
+        ItemSlot.ItemDescriptionText.text = "";
+
+        ItemSlot.itemIsSelected = false;
+    }
 
     // private void DropCurrentItem(GameObject pickedUpItem)
     // {

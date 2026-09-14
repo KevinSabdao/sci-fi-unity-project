@@ -468,8 +468,9 @@ MonoBehaviour:
   - {fileID: 726084597376764339}
   - {fileID: 3473012428511150595}
   activeItemSlots: []
+  maxItemSlots: 15
   InventoryUI: {fileID: 8543259338631985490}
-  ItemSlot: {fileID: 3649529234464599775, guid: 5bd7b225b5a1950089df532468a011e5, type: 3}
+  ItemSlotPrefab: {fileID: 3649529234464599775, guid: 5bd7b225b5a1950089df532468a011e5, type: 3}
   ArmSlots: {fileID: 2494349512516293989}
   activeArmSlots: []
   StorageSlots: {fileID: 0}
