@@ -1,52 +1,44 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 public class ItemSlot : MonoBehaviour, IPointerClickHandler
 {
-    private string itemName;
-    private KeyCode keyPress;
-    private string description;
     internal GameObject item;
 
-    private Image image;
-
-    public GameObject selectedSlot;
-    public bool thisItemSelected;
-
-    internal static Image ItemDescriptionImage;
-    internal static TMP_Text ItemDescriptionName;
-    internal static TMP_Text ItemDescriptionText;
-
+    // Item slot specific information
+    internal GameObject selectedSlot;
+    internal bool thisItemSelected;
     internal bool isArm = false;
     internal int storedIndex;
+
+    // Item slot shared information
     internal static bool itemIsSelected = false;
     private static ItemSlot itemSelected;
+
+    // Item functionality attributes
+    private Image image;
+    internal KeyCode keyPress; // Key press to activate item slot
+
+    private Inventory inventory;
 
     public void Start()
     {
         this.selectedSlot = this.transform.GetChild(0).gameObject;
-        ItemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
-        ItemDescriptionImage.enabled = false;
-        ItemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
-        ItemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        this.inventory = Inventory.Instance;
     }
     
-    public ItemSlot(string name, KeyCode keyPress)
+    internal void PickupItem(GameObject pickedUpItemObject)
     {
-        this.name = name;
-        this.keyPress = keyPress;
-    }
+        this.item = pickedUpItemObject;
+        Item pickedUpItemItem = pickedUpItemObject.GetComponent<Item>();
+        
+        // Make the item act on the button corresponding to the item slot
+        pickedUpItemItem.keyPressRequired = keyPress;
 
-    public void PickupItem(GameObject pickedUpItem)
-    {
-        this.name = pickedUpItem.GetComponent<Item>().itemName;
-        this.item = pickedUpItem;
-        this.description = pickedUpItem.GetComponent<Item>().description;
-
+        // Store the item's image for later use
         this.image = this.transform.GetChild(1).GetComponent<Image>();
-        this.image.sprite = pickedUpItem.GetComponent<Item>().inventoryIcon;
+        this.image.sprite = pickedUpItemItem.inventoryIcon;
         this.image.enabled = true;
     }
 
@@ -60,34 +52,32 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnLeftClick()
     {
-        if (!this.item) { return; }
+        if (!this.item) { return; } // Immediately back out if no item is selected
 
+        // Deselect if clicking on the same item
         if (itemIsSelected && this == itemSelected)
         {
-            Inventory.Instance.DeselectAllSlots();
+            inventory.DeselectAllSlots();
         }
-        else if (itemIsSelected && (this.isArm || itemSelected.isArm))
+        
+        // Swap items if clicking on two different items where one is an arm
+        else if (itemIsSelected && this.isArm)
         {
-            if (this.isArm)
-            {
-                Inventory.Instance.SwapItems(this, itemSelected);
-            }
-            else if (itemSelected.isArm)
-            {
-                Inventory.Instance.SwapItems(itemSelected, this);
-            }
+            inventory.SwapItems(this, itemSelected);
         }
+        else if (itemIsSelected && itemSelected.isArm)
+        {
+            inventory.SwapItems(itemSelected, this);
+        }
+
+        // Select item
         else
         {
-            Inventory.Instance.DeselectAllSlots();
+            inventory.DeselectAllSlots();
+            inventory.SetDescription(this.item, this.image);
+
             this.selectedSlot.SetActive(true);
             this.thisItemSelected = true;
-
-            ItemDescriptionName.text = this.name;
-            ItemDescriptionText.text = this.description;
-            if (this.image) { ItemDescriptionImage.sprite = this.image.sprite; }
-            ItemDescriptionImage.enabled = true;
-
             itemIsSelected = true;
             itemSelected = this;
         }

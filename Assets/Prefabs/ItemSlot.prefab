@@ -90,8 +90,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2de139f4890b1e243b2c27400750c4dc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemSlot
-  selectedSlot: {fileID: 0}
-  thisItemSelected: 0
+  leftArmKey: 323
+  rightArmKey: 324
 --- !u!1 &4038706867186178451
 GameObject:
   m_ObjectHideFlags: 0

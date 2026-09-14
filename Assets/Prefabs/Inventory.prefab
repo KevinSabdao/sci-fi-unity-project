@@ -463,18 +463,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inventory
   startingItems: []
-  itemSlots:
-  - {fileID: 6730776257390983819}
-  - {fileID: 726084597376764339}
-  - {fileID: 3473012428511150595}
-  activeItemSlots: []
-  maxItemSlots: 15
-  InventoryUI: {fileID: 8543259338631985490}
+  maxStorageSlots: 15
   ItemSlotPrefab: {fileID: 3649529234464599775, guid: 5bd7b225b5a1950089df532468a011e5, type: 3}
-  ArmSlots: {fileID: 2494349512516293989}
-  activeArmSlots: []
-  StorageSlots: {fileID: 0}
-  inactiveSlots: []
+  openInventory: 101
+  useLeftArm: 323
+  useRightArm: 324
 --- !u!1 &2938546799765051871
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,30 +1,48 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Inventory : MonoBehaviour
 {
+    // Singleton
     public static Inventory Instance { get; set; }
 
     // Inventory slots
-    public List<GameObject> startingItems;
-    public List<GameObject> itemSlots;
-    public List<GameObject> activeItemSlots;
-    public int maxItemSlots; // Maximum the UI can handle is 15 :/
+    [Header("Inventory:")]
+    [SerializeField]
+    private List<GameObject> startingItems;
+    private List<GameObject> itemSlots;
+    private List<GameObject> activeItemSlots;
+    [SerializeField]
+    private int maxStorageSlots; // Maximum the UI can handle is 15 :/
 
     // Inventory UI
-    public GameObject InventoryUI;
-    public GameObject ItemSlotPrefab;
-    public GameObject ArmSlots;
-    public List<GameObject> activeArmSlots;
-    public GameObject StorageSlots;
-    public List<GameObject> inactiveSlots;
+    private GameObject InventoryUI;
+    [SerializeField]
+    private GameObject ItemSlotPrefab;
+    private GameObject ArmSlots;
+    private List<GameObject> activeArmSlots;
+    private GameObject StorageSlots;
+    private List<GameObject> inactiveSlots;
     private bool menuActivated = false;
+    internal Image itemDescriptionImage;
+    internal TMP_Text itemDescriptionName;
+    internal TMP_Text itemDescriptionText;
+
+    // Keybinds
+    [Header("Keybinds:")]
+    [SerializeField]
+    private KeyCode openInventory;
+    [SerializeField]
+    private KeyCode useLeftArm;
+    [SerializeField]
+    private KeyCode useRightArm;
+
     
     private void Awake()
     {
-        ArmSlots = GameObject.Find("ArmSlots");
-        StorageSlots = GameObject.Find("StorageSlots");
-
+        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -33,16 +51,33 @@ public class Inventory : MonoBehaviour
         {
             Instance = this;
         }
-    }
 
-    private void Start()
-    {
+        // Set internal inventory parameters
+        this.ArmSlots = GameObject.Find("ArmSlots");
+        this.StorageSlots = GameObject.Find("StorageSlots");
+        this.InventoryUI = GameObject.Find("InventoryUI");
+        this.itemSlots = new List<GameObject>();
+        this.activeItemSlots = new List<GameObject>();
+        this.activeArmSlots = new List<GameObject>();
+        this.inactiveSlots = new List<GameObject>();
+        this.itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
+        this.itemDescriptionImage.enabled = false;
+        this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
+        this.itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+
+        // Set item slots
+        foreach(Transform itemSlot in GameObject.Find("InventoryStorage").transform)
+        {
+            itemSlots.Add(itemSlot.gameObject);
+        }
+
         // Set active item slots
         for (int i = 0; i < this.transform.GetChild(0).childCount - 1; i++)
         {
             activeItemSlots.Add(itemSlots[i]);
             (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(ArmSlots.transform);
             ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>().isArm = true;
+            ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>().keyPress = (i == 0) ? useLeftArm : useRightArm;
             activeArmSlots.Add(ArmSlots.transform.GetChild(i).gameObject);
         }
 
@@ -58,23 +93,30 @@ public class Inventory : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E) && inactiveSlots.Count < maxItemSlots)
+        // Pick up item
+        if (Input.GetKeyDown(openInventory))
         {
             menuActivated = !menuActivated;
             InventoryUI.SetActive(menuActivated);
-            Time.timeScale = menuActivated ? 0 : 1;
-            Cursor.lockState = menuActivated ? CursorLockMode.None : CursorLockMode.Locked;
-        }
-    }
 
-    private enum ScrollDirection
-    {
-        Left,
-        Right
+            if (menuActivated)
+            {
+                Time.timeScale = 0;
+                Cursor.lockState = CursorLockMode.None;
+            }
+            else
+            {
+                Time.timeScale = 1;
+                Cursor.lockState = CursorLockMode.Locked;
+                DeselectAllSlots();
+            }
+        }
     }
 
     public void PickupItem(GameObject pickedUpItem)
     {
+        if (inactiveSlots.Count > maxStorageSlots) { return; } // If no more items can go into the inventory
+
         // Put item into next active slot
         for (int i = 0; i < activeItemSlots.Count; i++)
         {
@@ -93,41 +135,52 @@ public class Inventory : MonoBehaviour
 
     private void AddItemIntoSlot(GameObject itemAdded, GameObject slot, int index, bool inActiveSlot)
     {
+        // Add physical item corresponding inventory location
         itemAdded.transform.SetParent(slot.transform, false);
+
+        // Add UI item to corresponding inventory location
+        ItemSlot itemSlot;
         if (inActiveSlot)
         {
-            activeArmSlots[index].GetComponent<ItemSlot>().PickupItem(itemAdded);
-            activeArmSlots[index].GetComponent<ItemSlot>().storedIndex = index;
-            activeArmSlots[index].GetComponent<ItemSlot>().isArm = inActiveSlot;
+            itemSlot = activeArmSlots[index].GetComponent<ItemSlot>();
+            itemSlot.PickupItem(itemAdded);
+            itemSlot.storedIndex = index;
+            itemSlot.isArm = inActiveSlot;
         }
         else
         {
-            inactiveSlots[index].GetComponent<ItemSlot>().PickupItem(itemAdded);
-            inactiveSlots[index].GetComponent<ItemSlot>().storedIndex = index;
-            inactiveSlots[index].GetComponent<ItemSlot>().isArm = inActiveSlot;
+            itemSlot = inactiveSlots[index].GetComponent<ItemSlot>();
+            itemSlot.PickupItem(itemAdded);
+            itemSlot.storedIndex = index;
+            itemSlot.isArm = inActiveSlot;
         }
 
+        // Set active state of item
         Item item = itemAdded.GetComponent<Item>();
         item.isActive = inActiveSlot;
 
+        // Store position and rotation of the item for future dropping feature
         itemAdded.transform.localPosition = new Vector3(item.spawnPosition.x, item.spawnPosition.y, item.spawnPosition.z);
         itemAdded.transform.localRotation = Quaternion.Euler(item.spawnRotation.x, item.spawnRotation.y, item.spawnRotation.z);
     }
 
     public void SwapItems(ItemSlot itemArm, ItemSlot itemStorage)
     {
-        GameObject itemArmItem = itemArm.item;
+        // Create separate objects to avoid broken reference
         GameObject itemStorageItem = itemStorage.item;
+        GameObject itemArmItem = itemArm.item;
         int storageIndex = itemStorage.storedIndex;
         int armIndex = itemArm.storedIndex;
+
+        // Add item from storage to arm
         AddItemIntoSlot(itemStorageItem, activeItemSlots[armIndex], armIndex, true);
 
-        // Put item into storage if no active slots are available
+        // Add item to either arm or storage
         if (itemStorage.isArm)
         {
             AddItemIntoSlot(itemArmItem, activeItemSlots[storageIndex], storageIndex, true);
         }
-        else
+        else // Put item into storage if no active slots are available
         {
             (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
             inactiveSlots.Add(StorageSlots.transform.GetChild(inactiveSlots.Count).gameObject);
@@ -136,7 +189,6 @@ public class Inventory : MonoBehaviour
             Destroy(inactiveSlots[storageIndex].gameObject);
             inactiveSlots.RemoveAt(storageIndex);
         }
-
 
         // Fix stored indexes
         for (int i = 0; i < inactiveSlots.Count; i++)
@@ -159,7 +211,7 @@ public class Inventory : MonoBehaviour
             itemSlot.thisItemSelected = false;
         }
 
-        // Deselect all inventory slots
+        // Deselect all storage slots
         foreach (GameObject slot in inactiveSlots)
         {
             itemSlot = slot.GetComponent<ItemSlot>();
@@ -168,11 +220,20 @@ public class Inventory : MonoBehaviour
         }
 
         // Remove name and description text
-        ItemSlot.ItemDescriptionImage.enabled = false;
-        ItemSlot.ItemDescriptionName.text = "";
-        ItemSlot.ItemDescriptionText.text = "";
+        itemDescriptionImage.enabled = false;
+        itemDescriptionName.text = "";
+        itemDescriptionText.text = "";
 
         ItemSlot.itemIsSelected = false;
+    }
+
+    public void SetDescription(GameObject itemObject, Image itemImage)
+    {
+        Item itemItem = itemObject.GetComponent<Item>();
+        itemDescriptionName.text = itemItem.itemName;
+        itemDescriptionText.text = itemItem.description;
+        if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
+        itemDescriptionImage.enabled = true;
     }
 
     // private void DropCurrentItem(GameObject pickedUpItem)
