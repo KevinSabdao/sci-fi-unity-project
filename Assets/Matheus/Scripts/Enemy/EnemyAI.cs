@@ -357,7 +357,10 @@ namespace COMP602
         {
             // damped rather than set, so the blend tree eases between clips
             if (animator != null)
-                animator.SetFloat("Speed", value, 0.15f, Time.deltaTime);
+            {
+                float normalised = chaseSpeed > 0f ? value / chaseSpeed : 0f;
+                animator.SetFloat("Speed", normalised, 0.15f, Time.deltaTime);
+            }
         }
 
         // Scene view only, see EnemyDebugRanges for the Game view version.
