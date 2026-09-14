@@ -41,6 +41,7 @@ namespace COMP602
 
         [Header("Timing")]
         // seconds between attacks
+        [ReadOnly]
         [SerializeField] float cooldown = 2f;
 
         // the gate frees itself if an attack never calls End

@@ -48,6 +48,7 @@ namespace COMP602
         [SerializeField] float damage = 20f;
 
         // how long the player stays held, in seconds
+        [ReadOnly]
         [SerializeField] float grabDuration = 2f;
 
         // seconds spent turning the player to face this enemy
@@ -58,6 +59,7 @@ namespace COMP602
 
         // extra seconds planted for the recovery animation, the player is
         // already free by then
+        [ReadOnly]
         [SerializeField] float recoveryTime = 3.1f;
 
         PlayerHealth targetHealth;

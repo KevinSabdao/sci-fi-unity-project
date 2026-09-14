@@ -21,12 +21,15 @@ namespace COMP602
             public float damage = 10f;
 
             // seconds from the animation starting until the hit lands
+            [ReadOnly]
             public float damageDelay = 1f;
 
             // total length of the move
+            [ReadOnly]
             public float duration = 2.6f;
 
             // extra seconds planted for a recovery animation such as a roar
+            [ReadOnly]
             public float recoveryTime = 2.8f;
 
             // push applied on hit in metres per second, 0 for none
