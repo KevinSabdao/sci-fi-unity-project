@@ -56,9 +56,6 @@ public class Weapon : Item
     {
         if (!isActive) return;
 
-        // Implement item pickup
-        base.CheckRequiredKeyPress();
-
         switch (currentShootingMode)
         {
             // Holding down left mouse button

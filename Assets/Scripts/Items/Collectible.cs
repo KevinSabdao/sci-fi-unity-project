@@ -11,8 +11,6 @@ public class Collectible : Item
     {
         if (!isActive) return;
 
-        // Implement item pickup
-        base.CheckRequiredKeyPress();
     }
 
 }
