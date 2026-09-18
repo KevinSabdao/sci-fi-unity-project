@@ -11,6 +11,7 @@ namespace COMP602
     {
         [Header("Timing")]
         // held this long, should match the stagger clip
+        [ReadOnly]
         [SerializeField] float staggerDuration = 0.6f;
 
         // absorbs bursts from multi-pellet weapons
