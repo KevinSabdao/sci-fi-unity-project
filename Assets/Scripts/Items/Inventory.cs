@@ -12,6 +12,7 @@ public class Inventory : MonoBehaviour
     [Header("Inventory:")]
     [SerializeField]
     private List<GameObject> startingItems;
+
     private List<GameObject> itemSlots;
     private List<GameObject> activeItemSlots;
     [SerializeField]
@@ -25,6 +26,9 @@ public class Inventory : MonoBehaviour
     private List<GameObject> activeArmSlots;
     private GameObject StorageSlots;
     private List<GameObject> inactiveSlots;
+    public static List<Keys> keyList = new List<Keys>();
+    public static int keyCounter = 0;
+
     private bool menuActivated = false;
     internal Image itemDescriptionImage;
     internal TMP_Text itemDescriptionName;
@@ -235,6 +239,22 @@ public class Inventory : MonoBehaviour
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
         itemDescriptionImage.enabled = true;
     }
+    public static void AddKey(string name, int count)
+    {
+        Keys existingKey = keyList.Find(x => x.keyName == name);
+        if (existingKey != null)
+        {
+            existingKey.keyCount++;
+
+        }
+        else
+        {
+            keyCounter++;
+            Keys key = new Keys(name, count);
+            keyList.Add(key);
+        }
+    }
+
 
     // private void DropCurrentItem(GameObject pickedUpItem)
     // {
