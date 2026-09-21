@@ -64,7 +64,7 @@ namespace COMP602
             Current = Mathf.Min(Current + amount, maxHealth);
         }
 
-        void Respawn()
+        public void Respawn()
         {
             Vector3 target = respawnPoint != null ? respawnPoint.position : startPosition;
 
