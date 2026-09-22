@@ -8,6 +8,9 @@ namespace COMP602
     // Also owns the cursor lock, since capturing the cursor is what makes
     // looking around possible. Other scripts read InputCaptured instead of
     // checking the cursor themselves.
+    // Menus do not touch the cursor or Time.timeScale either: they call
+    // PushUiModal/PopUiModal, so one owner decides when the game is frozen and
+    // who holds the pointer, and two menus open at once cannot fight over it.
     // Runs first so movement, later in the same frame, reads a rotated transform.
     [DefaultExecutionOrder(-100)]
     public class FirstPersonLook : MonoBehaviour
@@ -24,6 +27,15 @@ namespace COMP602
         // true while the cursor is captured and gameplay input should be read,
         // reads global state so it survives this component being disabled
         public static bool InputCaptured => Cursor.lockState == CursorLockMode.Locked;
+
+        // how many interactive panels currently want the cursor. A count rather
+        // than a flag, so an inventory opened on top of a pause menu still
+        // leaves the cursor free when only one of the two closes.
+        static int uiModalCount;
+
+        // true while a panel owns the cursor, so a click belongs to that panel
+        // and must not hand the cursor back to the camera
+        public static bool UiHasCursor => uiModalCount > 0;
 
         const float MaxPitchDegrees = 89f;
 
@@ -50,6 +62,35 @@ namespace COMP602
             cameraPitch = Mathf.Clamp(pitch, -MaxPitchDegrees, MaxPitchDegrees);
         }
 
+        // call when an interactive panel opens, it hands the cursor to the UI
+        // and freezes the game
+        public static void PushUiModal()
+        {
+            uiModalCount++;
+
+            if (uiModalCount == 1)
+            {
+                Time.timeScale = 0f;
+                SetCursorLocked(false);
+            }
+        }
+
+        // call when a panel closes, the game resumes and the camera takes the
+        // cursor back only once the last panel is gone
+        public static void PopUiModal()
+        {
+            if (uiModalCount == 0)
+                return;
+
+            uiModalCount--;
+
+            if (uiModalCount == 0)
+            {
+                Time.timeScale = 1f;
+                SetCursorLocked(true);
+            }
+        }
+
         void Start()
         {
             // the child camera keeps the prefab working if the reference is lost
@@ -73,6 +114,10 @@ namespace COMP602
                 enabled = false;
                 return;
             }
+
+            // a reloaded scene starts with no panel open, so drop any count left
+            // over from the previous one
+            uiModalCount = 0;
 
             SetCursorLocked(true);
         }
@@ -99,6 +144,12 @@ namespace COMP602
 
         void UpdateCursorLock()
         {
+            // a panel owns the cursor while it is open. without this, the click
+            // the player aims at that panel is read as "click to resume" below,
+            // which recaptures the cursor and pins the pointer to screen centre
+            if (UiHasCursor)
+                return;
+
             bool escapePressed = Keyboard.current?.escapeKey.wasPressedThisFrame ?? false;
             if (escapePressed)
                 SetCursorLocked(false);

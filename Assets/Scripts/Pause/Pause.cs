@@ -1,4 +1,5 @@
 using System;
+using COMP602;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -42,10 +43,10 @@ public class PauseMenu : MonoBehaviour
     }
     public void Resume()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // FirstPersonLook owns the cursor and Time.timeScale, see Inventory for
+        // why neither is set directly here
+        FirstPersonLook.PopUiModal();
         pauseCamera.SetActive(false);
-        Time.timeScale = 1f;
         AudioListener.pause = false;
         isPaused = false;
         
@@ -56,8 +57,7 @@ public class PauseMenu : MonoBehaviour
     }
     public void Pause()
     {
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        FirstPersonLook.PushUiModal();
         pauseCamera.SetActive(true);
         Vector3 pausePos = player.transform.position;
 
@@ -65,8 +65,7 @@ public class PauseMenu : MonoBehaviour
         pausePos.x += 5;
         pauseCamera.transform.position = pausePos;
 
-        
-        Time.timeScale = 0f;
+
         AudioListener.pause = true;
         isPaused = true;
         

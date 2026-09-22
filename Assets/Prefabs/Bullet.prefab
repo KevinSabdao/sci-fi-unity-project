@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 43903686497290699}
   - component: {fileID: 483068370639655199}
   - component: {fileID: 624301121246292229}
+  - component: {fileID: 3215307245620566462}
   m_Layer: 0
   m_Name: Bullet
   m_TagString: Untagged
@@ -262,3 +263,16 @@ TrailRenderer:
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
+--- !u!114 &3215307245620566462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8863769569589352573}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bec1f9149e3c204ead08df6ea72050c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Bullet
+  damage: 25

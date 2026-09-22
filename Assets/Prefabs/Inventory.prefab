@@ -129,7 +129,7 @@ Transform:
   m_GameObject: {fileID: 726084597376764339}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.48100007, y: 3.4809997, z: 0.763}
+  m_LocalPosition: {x: 0.3, y: -0.25, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -462,10 +462,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ade26e4152ceb99cea19eacb569c63ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inventory
-  startingItems: []
+  startingItems:
+  - {fileID: 0}
+  - {fileID: 0}
   maxStorageSlots: 15
   ItemSlotPrefab: {fileID: 3649529234464599775, guid: 5bd7b225b5a1950089df532468a011e5, type: 3}
-  openInventory: 101
+  openInventory: 9
   useLeftArm: 323
   useRightArm: 324
 --- !u!1 &2938546799765051871
@@ -517,7 +519,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5660565880164756614
 Transform:
   m_ObjectHideFlags: 0
@@ -799,7 +801,7 @@ Transform:
   m_GameObject: {fileID: 6730776257390983819}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.556, y: 3.4809997, z: 0.763}
+  m_LocalPosition: {x: -0.3, y: -0.25, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

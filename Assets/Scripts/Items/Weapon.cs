@@ -1,4 +1,5 @@
 using System.Collections;
+using COMP602;
 using UnityEngine;
 
 public class Weapon : Item
@@ -26,6 +27,9 @@ public class Weapon : Item
     public Transform bulletSpawn;
     public float bulletVelocity = 30;
     public float bulletPrefabLifeTime = 3f;
+    // hit points taken off an enemy per round, stamped onto each bullet as it
+    // spawns so one prefab can serve guns that hit for different amounts
+    public float damage = 25f;
 
     public enum WeaponModel
     {
@@ -50,11 +54,19 @@ public class Weapon : Item
         durability = durabilityMax;
         readyToShoot = true;
         burstBulletsLeft = bulletsPerBurst;
+
+        // the shot is aimed through this camera, so an unassigned reference
+        // throws on the first trigger pull rather than at startup
+        if (playerCamera == null) playerCamera = Camera.main;
     }
 
     private void Update()
     {
         if (!isActive) return;
+
+        // the arm keys are mouse buttons, so without this a click on an
+        // inventory slot also pulls the trigger
+        if (FirstPersonLook.UiHasCursor) return;
 
         switch (currentShootingMode)
         {
@@ -91,6 +103,10 @@ public class Weapon : Item
         
         // Instantiate the bullet
         GameObject bullet = Instantiate(bulletPrefab, bulletSpawn.position, Quaternion.identity);
+
+        // Tell the round how hard this gun hits, without it the bullet is just
+        // physics and an enemy never loses health
+        if (bullet.TryGetComponent(out Bullet bulletScript)) bulletScript.damage = damage;
 
         // Point the bullet to face the shooting direction
         bullet.transform.forward = shootingDirection;

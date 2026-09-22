@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using COMP602;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -105,13 +106,14 @@ public class Inventory : MonoBehaviour
 
             if (menuActivated)
             {
-                Time.timeScale = 0;
-                Cursor.lockState = CursorLockMode.None;
+                // FirstPersonLook owns the cursor and Time.timeScale, asking it
+                // keeps the pointer free AND visible, and stops a click on a
+                // slot from being read as "click to resume"
+                FirstPersonLook.PushUiModal();
             }
             else
             {
-                Time.timeScale = 1;
-                Cursor.lockState = CursorLockMode.Locked;
+                FirstPersonLook.PopUiModal();
                 DeselectAllSlots();
             }
         }
