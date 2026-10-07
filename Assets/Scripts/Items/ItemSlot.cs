@@ -4,13 +4,15 @@ using UnityEngine.EventSystems;
 
 public class ItemSlot : MonoBehaviour, IPointerClickHandler
 {
-    internal GameObject item;
+    [SerializeField]
+    internal Item item;
 
     // Item slot specific information
     internal GameObject selectedSlot;
     internal bool thisItemSelected;
     internal bool isArm = false;
     internal int storedIndex;
+    internal int itemStackSize;
 
     // Item slot shared information
     internal static bool itemIsSelected = false;
@@ -28,17 +30,18 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         this.inventory = Inventory.Instance;
     }
     
-    internal void PickupItem(GameObject pickedUpItemObject)
+    internal void PickupItem(Item pickedUpItem)
     {
-        this.item = pickedUpItemObject;
-        Item pickedUpItemItem = pickedUpItemObject.GetComponent<Item>();
+        // this.item = pickedUpItemObject.GetComponent<Item>();
+        this.item = pickedUpItem;
+        // Item pickedUpItemItem = pickedUpItemObject.GetComponent<Item>();
         
         // Make the item act on the button corresponding to the item slot
-        pickedUpItemItem.keyPressRequired = keyPress;
+        this.item.keyPressRequired = keyPress;
 
         // Store the item's image for later use
         this.image = this.transform.GetChild(1).GetComponent<Image>();
-        this.image.sprite = pickedUpItemItem.inventoryIcon;
+        this.image.sprite = this.item.inventoryIcon;
         this.image.enabled = true;
     }
 
