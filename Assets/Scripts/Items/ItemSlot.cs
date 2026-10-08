@@ -5,7 +5,8 @@ using UnityEngine.EventSystems;
 public class ItemSlot : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField]
-    internal Item item;
+    internal GameObject itemObject;
+    internal Item itemItem;
 
     // Item slot specific information
     internal GameObject selectedSlot;
@@ -30,18 +31,17 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         this.inventory = Inventory.Instance;
     }
     
-    internal void PickupItem(Item pickedUpItem)
+    internal void PickupItem(GameObject pickedUpItem)
     {
-        // this.item = pickedUpItemObject.GetComponent<Item>();
-        this.item = pickedUpItem;
-        // Item pickedUpItemItem = pickedUpItemObject.GetComponent<Item>();
+        this.itemObject = pickedUpItem;
+        this.itemItem = pickedUpItem.GetComponent<Item>();
         
         // Make the item act on the button corresponding to the item slot
-        this.item.keyPressRequired = keyPress;
+        this.itemItem.keyPressRequired = keyPress;
 
         // Store the item's image for later use
         this.image = this.transform.GetChild(1).GetComponent<Image>();
-        this.image.sprite = this.item.inventoryIcon;
+        this.image.sprite = this.itemItem.inventoryIcon;
         this.image.enabled = true;
     }
 
@@ -55,7 +55,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnLeftClick()
     {
-        if (!this.item) { return; } // Immediately back out if no item is selected
+        if (!this.itemItem) { return; } // Immediately back out if no item is selected
 
         // Deselect if clicking on the same item
         if (itemIsSelected && this == itemSelected)
@@ -64,20 +64,16 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         }
         
         // Swap items if clicking on two different items where one is an arm
-        else if (itemIsSelected && this.isArm)
+        else if (itemIsSelected)
         {
             inventory.SwapItems(this, itemSelected);
-        }
-        else if (itemIsSelected && itemSelected.isArm)
-        {
-            inventory.SwapItems(itemSelected, this);
         }
 
         // Select item
         else
         {
             inventory.DeselectAllSlots();
-            inventory.SetDescription(this.item, this.image);
+            inventory.SetDescription(this.itemItem, this.image);
 
             this.selectedSlot.SetActive(true);
             this.thisItemSelected = true;

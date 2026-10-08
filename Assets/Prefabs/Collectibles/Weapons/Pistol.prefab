@@ -321,7 +321,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bee782ddbab121c79e9181a5638006e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weapon
-  inventoryIcon: {fileID: 0}
+  inventoryIcon: {fileID: 21300000, guid: fb1899762cce6884e9899ab7e31d7b54, type: 3}
+  itemRef: {fileID: 7841897301475773265}
+  itemName: Pistol
+  description: Lorem ipsum dolor sit amet.
+  itemStackSizeMax: 0
   spawnPosition: {x: 0, y: 0, z: 0}
   spawnRotation: {x: 0, y: 180, z: 0}
   playerCamera: {fileID: 0}
@@ -335,6 +339,7 @@ MonoBehaviour:
   bulletSpawn: {fileID: 3057735772669905229}
   bulletVelocity: 100
   bulletPrefabLifeTime: 3
+  damage: 25
   thisWeaponModel: 0
   currentShootingMode: 0
 --- !u!114 &4830372009491033508

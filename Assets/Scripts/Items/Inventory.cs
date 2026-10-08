@@ -1,5 +1,6 @@
-using System.Collections.Generic;
 using COMP602;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,6 +20,8 @@ public class Inventory : MonoBehaviour
     private List<GameObject> ArmObjects;
     [SerializeField]
     private int maxStorageSlots; // Maximum the UI can handle is 15 :/
+    [SerializeField]
+    private GameObject inactiveItems;
 
     // Inventory UI
     private GameObject InventoryUI;
@@ -66,6 +69,8 @@ public class Inventory : MonoBehaviour
         this.ArmSlots = GameObject.Find("ArmSlots");
         this.StorageSlots = GameObject.Find("StorageSlots");
         this.InventoryUI = GameObject.Find("InventoryUI");
+        this.inactiveItems = GameObject.Find("InactiveItems");
+        this.inactiveItems.SetActive(false);
         this.ArmObjects = new List<GameObject>();
         this.itemSlotsActive = new List<ItemSlot>();
         this.itemSlotsInactive = new List<ItemSlot>();
@@ -134,9 +139,9 @@ public class Inventory : MonoBehaviour
         // Put item into next active slot
         for (int i = 0; i < itemSlotsActive.Count; i++)
         {
-            if (itemSlotsActive[i].item == null)
+            if (itemSlotsActive[i].itemItem == null)
             {
-                AddItemIntoSlot(pickedUpItemItem, i, true);
+                AddItemIntoSlot(pickedUpItemObject, i, true);
                 return;
             }
         }
@@ -144,88 +149,57 @@ public class Inventory : MonoBehaviour
         // Put item into storage if no active slots are available
         (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
         itemSlotsInactive.Add(StorageSlots.transform.GetChild(itemSlotsInactive.Count).GetComponent<ItemSlot>());
-        AddItemIntoSlot(pickedUpItemItem, itemSlotsInactive.Count - 1, false);
+        AddItemIntoSlot(pickedUpItemObject, itemSlotsInactive.Count - 1, false);
     }
 
-    private void AddItemIntoSlot(Item itemAdded, int index, bool inActiveSlot)
+    private void AddItemIntoSlot(GameObject itemAdded, int index, bool inActiveSlot)
     {
-        // Add physical item corresponding inventory location
-        // itemAdded.transform.SetParent(slot.transform, false);
+        Item item = itemAdded.GetComponent<Item>();
 
-        // Add UI item to corresponding inventory location
+        // Add item to correct inventory location
         ItemSlot itemSlot;
         if (inActiveSlot)
         {
+            itemAdded.transform.SetParent(ArmObjects[index].transform, false);
             itemSlot = itemSlotsActive[index].GetComponent<ItemSlot>();
         }
         else
         {
+            itemAdded.transform.SetParent(inactiveItems.transform, false);
             itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
         }
+
+        // Store basic bookkeeping
         itemSlot.PickupItem(itemAdded);
         itemSlot.storedIndex = index;
         itemSlot.isArm = inActiveSlot;
-
-        // Set active state of item
-        itemAdded.isActive = inActiveSlot;
+        item.isActive = inActiveSlot;
 
         // Store position and rotation of the item for future dropping feature
-        // itemAdded.transform.localPosition = new Vector3(item.spawnPosition.x, item.spawnPosition.y, item.spawnPosition.z);
-        // itemAdded.transform.localRotation = Quaternion.Euler(item.spawnRotation.x, item.spawnRotation.y, item.spawnRotation.z);
+        itemAdded.transform.localPosition = new Vector3(item.spawnPosition.x, item.spawnPosition.y, item.spawnPosition.z);
+        itemAdded.transform.localRotation = Quaternion.Euler(item.spawnRotation.x, item.spawnRotation.y, item.spawnRotation.z);
     }
 
     public void SwapItems(ItemSlot itemArm, ItemSlot itemStorage)
     {
         // Create separate objects to avoid broken reference
-        Item itemStorageItem = itemStorage.item;
-        Item itemArmItem = itemArm.item;
+        GameObject itemStorageObject = itemStorage.itemObject;
+        GameObject itemArmObject = itemArm.itemObject;
         int storageIndex = itemStorage.storedIndex;
         int armIndex = itemArm.storedIndex;
 
-        // Add item from storage to arm
-        AddItemIntoSlot(itemStorageItem, armIndex, true);
-
-        // Add item to either arm or storage
-        if (itemStorage.isArm)
-        {
-            AddItemIntoSlot(itemArmItem, storageIndex, true);
-        }
-        else // Put item into storage if no active slots are available
-        {
-            AddItemIntoSlot(itemArmItem, storageIndex, false);
-            // (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
-            // itemSlotsInactive.Add(StorageSlots.transform.GetChild(itemSlotsInactive.Count).GetComponent<ItemSlot>());
-            // AddItemIntoSlot(itemArmItem, itemSlotsInactive.Count - 1, false);
-
-            // Destroy(itemSlotsInactive[storageIndex].gameObject);
-            // itemSlotsInactive.RemoveAt(storageIndex);
-        }
-
-        // Fix stored indexes
-        // for (int i = 0; i < itemSlotsInactive.Count; i++)
-        // {
-        //     itemSlotsInactive[i].GetComponent<ItemSlot>().storedIndex = i;
-        // }
+        // Actually swap items
+        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm);
+        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm);
 
         DeselectAllSlots();
     }
 
     public void DeselectAllSlots()
     {
-        // ItemSlot itemSlot;
-
-        // Deselect all arm slots
-        foreach (ItemSlot slot in itemSlotsActive)
+        // Deselect all item slots
+        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive))
         {
-            // itemSlot = slot.GetComponent<ItemSlot>();
-            if (slot.selectedSlot) { slot.selectedSlot.SetActive(false); }
-            slot.thisItemSelected = false;
-        }
-
-        // Deselect all storage slots
-        foreach (ItemSlot slot in itemSlotsInactive)
-        {
-            // itemSlot = slot.GetComponent<ItemSlot>();
             if (slot.selectedSlot) { slot.selectedSlot.SetActive(false); }
             slot.thisItemSelected = false;
         }
@@ -240,7 +214,6 @@ public class Inventory : MonoBehaviour
 
     public void SetDescription(Item item, Image itemImage)
     {
-        // Item itemItem = itemObject.GetComponent<Item>();
         itemDescriptionName.text = item.itemName;
         itemDescriptionText.text = item.description;
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
