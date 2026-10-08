@@ -6,7 +6,6 @@ public abstract class Item : MonoBehaviour
 {
     public bool isActive { get; set; }
     public Sprite inventoryIcon;
-    public GameObject itemRef;
 
     public string itemName;
     [TextArea]

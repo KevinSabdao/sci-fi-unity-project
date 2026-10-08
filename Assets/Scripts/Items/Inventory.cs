@@ -20,6 +20,9 @@ public class Inventory : MonoBehaviour
     // Inventory physical objects
     private List<GameObject> ArmObjects;
     private GameObject inactiveItems;
+    private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
+    private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
+    private readonly Vector3 dropRotation = new Vector3(0, -90, -90);
 
     // Inventory internal item slots
     private List<ItemSlot> itemSlotsActive;
@@ -39,6 +42,7 @@ public class Inventory : MonoBehaviour
     internal Image itemDescriptionImage;
     internal TMP_Text itemDescriptionName;
     internal TMP_Text itemDescriptionText;
+    private GameObject itemOptions; 
 
     // Keybinds
     [Header("Keybinds:")]
@@ -75,6 +79,7 @@ public class Inventory : MonoBehaviour
         this.itemDescriptionImage.enabled = false;
         this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
         this.itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        this.itemOptions = GameObject.Find("ItemOptions");
 
         // Set arm objects
         foreach(Transform itemSlot in GameObject.Find("InventoryStorage").transform)
@@ -135,18 +140,10 @@ public class Inventory : MonoBehaviour
                 DeselectAllSlots();
             }
         }
+
+        // Set displayability of item options
+        this.itemOptions.SetActive(ItemSlot.itemIsSelected);
     }
-
-    // private bool canAddItem()
-    // {
-    //     // Check for an empty item slot
-    //     foreach (ItemSlot itemSlot in itemSlotsActive.Concat(itemSlotsInactive))
-    //     {
-    //         if (itemSlot.itemObject == null) { return true; }
-    //     }
-
-    //     return false;
-    // }
 
     public void PickupItem(GameObject pickedUpItem)
     {
@@ -166,7 +163,7 @@ public class Inventory : MonoBehaviour
     {
         for (int i = 0; i < itemSlotsChecking.Count; i++)
         {
-            if (itemSlotsChecking[i].itemItem == null) // if slot is empty
+            if (itemSlotsChecking[i].itemObject == null) // if slot is empty
             {
                 AddItemIntoSlot(item, i, isActiveSlot);
                 return true;
@@ -202,8 +199,8 @@ public class Inventory : MonoBehaviour
         // Store position and rotation of the item for future dropping feature
         if (itemAddedObject)
         {
-            itemAddedObject.transform.localPosition = new Vector3(itemAddedItem.spawnPosition.x, itemAddedItem.spawnPosition.y, itemAddedItem.spawnPosition.z);
-            itemAddedObject.transform.localRotation = Quaternion.Euler(itemAddedItem.spawnRotation.x, itemAddedItem.spawnRotation.y, itemAddedItem.spawnRotation.z);
+            itemAddedObject.transform.localPosition = this.holdPosition;
+            itemAddedObject.transform.localRotation = Quaternion.Euler(this.holdRotation.x, this.holdRotation.y, this.holdRotation.z);
         }
     }
 
@@ -269,17 +266,32 @@ public class Inventory : MonoBehaviour
         DeselectAllSlots();
     }
 
-    // private void DropCurrentItem(GameObject pickedUpItem)
-    // {
-    //     if (itemSlotsActive.transform.childCount > 0)
-    //     {
-    //         var itemToDrop = itemSlotsActive.transform.GetChild(0).gameObject;
+    public void DropSelectedItem()
+    {
+        ItemSlot itemSelected = ItemSlot.itemSelected;
+        GameObject dropItemObject = itemSelected.itemObject;
+        Item dropItemItem = dropItemObject.GetComponent<Item>();
 
-    //         itemToDrop.GetComponent<Item>().isActive = false;
+        // Place item on the ground at the player's feet
+        dropItemObject.transform.SetParent(null);
+        Vector3 parentPosition = this.transform.parent.transform.position;
+        Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
+        dropItemObject.transform.localPosition = new Vector3(
+                parentPosition.x,
+                parentPosition.y,
+                parentPosition.z
+        );
+        dropItemObject.transform.localRotation = Quaternion.Euler(
+                this.dropRotation.x,
+                parentRotation.y + this.dropRotation.y,
+                this.dropRotation.z
+        );
 
-    //         itemToDrop.transform.SetParent(pickedUpItem.transform.parent);
-    //         itemToDrop.transform.localPosition = pickedUpItem.transform.localPosition;
-    //         itemToDrop.transform.localRotation = pickedUpItem.transform.localRotation;
-    //     }
-    // }
+        // Internally set it so the item is no longer in the inventory
+        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm);
+        dropItemItem.isActive = false;
+        ItemSlot.dropSelected = true;
+
+        DeselectAllSlots();
+    }
 }

@@ -25,6 +25,7 @@ public class ItemOption : MonoBehaviour, IPointerClickHandler
             switch (this.optionType)
             {
                 case OptionType.Delete: this.inventory.DeleteSelectedItem(); break;
+                case OptionType.Drop: this.inventory.DropSelectedItem(); break;
             }
         }
     }

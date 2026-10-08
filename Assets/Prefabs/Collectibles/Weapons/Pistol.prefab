@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3057735772669905229}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: BulletSpawn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 2803325186460108866}
   - component: {fileID: 3926368127638852388}
   - component: {fileID: 8963748997278825390}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Hammer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -132,7 +132,7 @@ GameObject:
   - component: {fileID: 6342175766030234596}
   - component: {fileID: 5587785525287330634}
   - component: {fileID: 3777591648124533612}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Magazin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -225,7 +225,7 @@ GameObject:
   - component: {fileID: 4919617630041551226}
   - component: {fileID: 4830372009491033508}
   - component: {fileID: 7344525466479618265}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Pistol
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -322,12 +322,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weapon
   inventoryIcon: {fileID: 21300000, guid: fb1899762cce6884e9899ab7e31d7b54, type: 3}
-  itemRef: {fileID: 7841897301475773265}
   itemName: Pistol
   description: Lorem ipsum dolor sit amet.
   itemStackSizeMax: 0
   spawnPosition: {x: 0, y: 0, z: 0}
-  spawnRotation: {x: 0, y: 180, z: 0}
+  spawnRotation: {x: 0, y: 135, z: -90}
   playerCamera: {fileID: 0}
   durabilityMax: 50
   durability: 0
@@ -4064,7 +4063,7 @@ GameObject:
   - component: {fileID: 4902237612595058260}
   - component: {fileID: 4897925475793035894}
   - component: {fileID: 2129709374645920183}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Slide
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4154,7 +4153,7 @@ GameObject:
   - component: {fileID: 6430983441724844183}
   - component: {fileID: 8060727477549577745}
   - component: {fileID: 5189729641020112667}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Trigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}

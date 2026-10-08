@@ -16,8 +16,9 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
     internal int itemStackSize;
 
     // Item slot shared information
-    internal static bool itemIsSelected = false;
+    public static bool itemIsSelected = false;
     public static ItemSlot itemSelected;
+    public static bool dropSelected;
 
     // Item functionality attributes
     private Image image;
@@ -30,6 +31,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         this.selectedSlot = this.transform.GetChild(0).gameObject;
         this.image = this.transform.GetChild(1).GetComponent<Image>();
         this.inventory = Inventory.Instance;
+        dropSelected = false;
     }
 
     public void Update()
@@ -39,6 +41,14 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         {
             this.image.sprite = null;
             this.image.enabled = false;
+        }
+
+        // Remove the selected item if a special variable is set
+        // I couldn't figure out a better way to do this :(
+        if (dropSelected && this == itemSelected)
+        {
+            this.itemObject = null;
+            dropSelected = false;
         }
     }
     
@@ -63,7 +73,6 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             this.image.sprite = null;
             this.image.enabled = false;
         }
-
     }
 
     public void OnPointerClick(PointerEventData eventData)

@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6580532356573517611}
   - component: {fileID: 8893449400933970286}
   - component: {fileID: 2085989421015682793}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Sight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -101,7 +101,7 @@ GameObject:
   - component: {fileID: 5939782929850789432}
   - component: {fileID: 5596369630623645327}
   - component: {fileID: 1809627086621537674}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Trigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -189,7 +189,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6053738539029798927}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: BulletSpawn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -225,7 +225,7 @@ GameObject:
   - component: {fileID: 131450402757679883}
   - component: {fileID: 821373750664455931}
   - component: {fileID: 1580260469825035123}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: MachineGun
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -324,12 +324,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Weapon
   inventoryIcon: {fileID: 21300000, guid: 4e3e5e12a43a71344919439903885107, type: 3}
-  itemRef: {fileID: 6145172154944734849}
   itemName: Machine Gun
   description: Lorem ipsum dolor sit amet.
   itemStackSizeMax: 0
   spawnPosition: {x: 0, y: 0, z: 0}
-  spawnRotation: {x: 0, y: 180, z: 0}
+  spawnRotation: {x: 0, y: 135, z: -90}
   playerCamera: {fileID: 0}
   durabilityMax: 200
   durability: 0
@@ -394,7 +393,7 @@ GameObject:
   - component: {fileID: 7079936020707122481}
   - component: {fileID: 4230978228419531786}
   - component: {fileID: 5772678425963591510}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Rear_Sight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -484,7 +483,7 @@ GameObject:
   - component: {fileID: 473056523714107005}
   - component: {fileID: 8276454121915438586}
   - component: {fileID: 7176002342651867373}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Mag
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -574,7 +573,7 @@ GameObject:
   - component: {fileID: 8995826300304301169}
   - component: {fileID: 7996171575629555280}
   - component: {fileID: 8659547165354642852}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bolt
   m_TagString: Untagged
   m_Icon: {fileID: 0}
