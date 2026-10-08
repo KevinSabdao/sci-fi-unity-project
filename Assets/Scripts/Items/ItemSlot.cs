@@ -17,7 +17,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     // Item slot shared information
     internal static bool itemIsSelected = false;
-    private static ItemSlot itemSelected;
+    public static ItemSlot itemSelected;
 
     // Item functionality attributes
     private Image image;
@@ -25,24 +25,45 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     private Inventory inventory;
 
-    public void Start()
+    public void Awake()
     {
         this.selectedSlot = this.transform.GetChild(0).gameObject;
+        this.image = this.transform.GetChild(1).GetComponent<Image>();
         this.inventory = Inventory.Instance;
+    }
+
+    public void Update()
+    {
+        // Delete image from slot if it becomes empty
+        if (!itemObject)
+        {
+            this.image.sprite = null;
+            this.image.enabled = false;
+        }
     }
     
     internal void PickupItem(GameObject pickedUpItem)
     {
         this.itemObject = pickedUpItem;
-        this.itemItem = pickedUpItem.GetComponent<Item>();
-        
-        // Make the item act on the button corresponding to the item slot
-        this.itemItem.keyPressRequired = keyPress;
 
-        // Store the item's image for later use
-        this.image = this.transform.GetChild(1).GetComponent<Image>();
-        this.image.sprite = this.itemItem.inventoryIcon;
-        this.image.enabled = true;
+        if (pickedUpItem != null)
+        {
+            this.itemItem = pickedUpItem.GetComponent<Item>();
+        
+            // Make the item act on the button corresponding to the item slot
+            this.itemItem.keyPressRequired = keyPress;
+
+            // Store the item's image for later use
+            this.image.sprite = this.itemItem.inventoryIcon;
+            this.image.enabled = true;
+        }
+        else
+        {
+            // Reset the item slot if the item is empty
+            this.image.sprite = null;
+            this.image.enabled = false;
+        }
+
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -55,7 +76,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnLeftClick()
     {
-        if (!this.itemItem) { return; } // Immediately back out if no item is selected
+        if (!itemIsSelected && !this.itemObject) { return; } // Immediately back out if no item is selected
 
         // Deselect if clicking on the same item
         if (itemIsSelected && this == itemSelected)
@@ -66,7 +87,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         // Swap items if clicking on two different items where one is an arm
         else if (itemIsSelected)
         {
-            inventory.SwapItems(this, itemSelected);
+            inventory.SwapItems(itemSelected, this);
         }
 
         // Select item
