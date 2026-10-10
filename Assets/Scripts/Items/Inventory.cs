@@ -39,7 +39,7 @@ public class Inventory : MonoBehaviour
     public static List<Keys> keyList = new List<Keys>();
     public static int keyCounter = 0;
 
-    private bool menuActivated = false;
+    public static bool menuActivated = false;
     internal Image itemDescriptionImage;
     internal TMP_Text itemDescriptionName;
     internal TMP_Text itemDescriptionText;
@@ -333,7 +333,7 @@ public class Inventory : MonoBehaviour
         }
     }
 
-    public void DropItem(GameObject dropItemObject)
+    private void DropItem(GameObject dropItemObject)
     {
         Item dropItemItem = dropItemObject.GetComponent<Item>();
 

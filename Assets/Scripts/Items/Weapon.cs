@@ -62,7 +62,7 @@ public class Weapon : Item
 
     private void Update()
     {
-        if (!isActive) return;
+        if (!isActive || Inventory.menuActivated) return;
 
         // the arm keys are mouse buttons, so without this a click on an
         // inventory slot also pulls the trigger
