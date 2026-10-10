@@ -3,95 +3,90 @@ using UnityEngine.AI;
 
 namespace COMP602
 {
-    // Enemy movement brain. Idles and wanders slowly around its spawn point
-    // until it notices the player, then switches to a faster chase. Attacks
-    // are not handled here: EnemyAttackState decides those, and this script
-    // stays out of the way while one is running.
-    //
-    // DETECTION
-    // Three independent ways of noticing the player, any one is enough:
-    // sight, which is a cone limited by View Angle and Detection Range;
-    // hearing, a smaller sphere that works in any direction, standing in for
-    // footsteps; and damage, which alerts instantly from any range and
-    // pursues for Alert Duration even if the shot came from far away.
-    // Staying behind the enemy and outside Hearing Range keeps you unseen.
-    //
-    // The cone follows the head bone on a humanoid rig, so the idle head
-    // sweep changes what the enemy can see. Head Forward Offset corrects
-    // the bone axis, which on Mixamo rigs rarely points at the face.
-    //
-    // SETUP
-    // Goes on the enemy root. Needs a NavMeshAgent, an Animator with a Float
-    // parameter named "Speed", and a baked NavMesh in the scene. The player
-    // must be tagged "Player" unless Target is filled in.
-    // EnemyHealth is optional: with it present, being hit alerts the enemy.
-    // Without it, the other two senses still work.
-    //
-    // TROUBLESHOOTING
-    // Enemy never moves: no baked NavMesh, or it spawned off the mesh.
-    // Enemy notices through walls: turn on Require Line Of Sight and set
-    // Sight Blockers to the layers walls live on.
-    // Enemy flickers between walk and run: Lose Sight Range is too close to
-    // Detection Range. Keep a few metres between them.
-    // Sneaking never works: Hearing Range may be larger than the room, or
-    // View Angle is near 360.
-    // Shot from far away is ignored: Alert Duration is too short for the
-    // enemy to cover the distance before the chase times out.
-    // Cone points the wrong way: adjust Head Forward Offset. 180 on Y for
-    // the nape, 90 on X for the top of the head.
     [RequireComponent(typeof(NavMeshAgent))]
     public class EnemyAI : MonoBehaviour
     {
-        enum State { Idle, Wander, Chase }
+        enum State { Idle, Wander, Chase, Return }
 
-        // who to chase, empty finds the object tagged Player
+        [Tooltip("Who to chase. Empty finds the object tagged Player.")]
         [SerializeField] Transform target;
 
         [Header("Sight")]
-        // how far the enemy can see inside its view cone
+        [Tooltip("How far he sees inside the view cone.")]
         [SerializeField] float detectionRange = 15f;
 
-        // total width of the view cone in degrees, 360 sees everything
         [Range(0f, 360f)]
+        [Tooltip("Width of the view cone in degrees. 360 is all round.")]
         [SerializeField] float viewAngle = 110f;
 
-        // larger than detectionRange, so the edge does not flip the state
+        [Tooltip("Distance at which he drops a chase.")]
         [SerializeField] float loseSightRange = 22f;
 
-        // off lets the enemy see through walls, handy in a test scene
+        [Tooltip("Off lets him see through walls.")]
         [SerializeField] bool requireLineOfSight;
 
-        // layers that block sight, leave the enemy and player layers out
+        [Tooltip("Layers that block sight. Leave the enemy and player layers out.")]
         [SerializeField] LayerMask sightBlockers = ~0;
 
-        // fallback eye height, used only when there is no head bone
+        [Tooltip("Eye height on the player. Also his own, with no head bone.")]
         [SerializeField] float eyeHeight = 1.5f;
 
-        // correction for the head bone forward axis, set it by eye
+        [Tooltip("Corrects the head bone forward axis.")]
         [SerializeField] Vector3 headForwardOffset = Vector3.zero;
 
         [Header("Hearing")]
-        // noticed at this distance regardless of facing, keep it small
+        [Tooltip("Heard at this distance in any direction.")]
         [SerializeField] float hearingRange = 4f;
 
         [Header("Alert")]
-        // guaranteed pursuit after being hit, ignoring range
+        [Tooltip("Pursuit window opened by a hit. Ignores range and the leash.")]
         [SerializeField] float alertDuration = 8f;
 
         [Header("Speeds")]
+        [Tooltip("Patrol speed.")]
         [SerializeField] float wanderSpeed = 0.6f;
+        [Tooltip("Chase and run home speed.")]
         [SerializeField] float chaseSpeed = 3.5f;
 
+        [Header("Leash")]
+        [Tooltip("He drops a chase this far from his spawn point.")]
+        [SerializeField] float leashRange = 25f;
+
+        // stops him hesitating at the edge
+        [Tooltip("Seconds ignoring the player after the leash ends a chase.")]
+        [SerializeField] float leashIgnoreDuration = 1.5f;
+
+        // off: getting close to the player also breaks it
+        [Tooltip("On, only a chase opened by damage can break the leash.")]
+        [SerializeField] bool leashBrokenByDamageOnly;
+
+        // seconds the player must stay out of Hearing Range to restore the leash
+        [Tooltip("Seconds of distance before a broken leash is restored.")]
+        [SerializeField] float caughtUpTimeout = 6f;
+
+        [Header("Stuck")]
+        // covers a player where the NavMesh can't reach
+        [Tooltip("Seconds of chasing without closing in before he gives up.")]
+        [SerializeField] float stuckTimeout = 4f;
+
+        [Tooltip("Seconds ignoring an unreachable player. A shot cuts it short.")]
+        [SerializeField] float stuckIgnoreDuration = 10f;
+
+        [Header("Return")]
+        [Tooltip("Distance from spawn at which he runs home instead of wandering.")]
+        [SerializeField] float runHomeDistance = 15f;
+
         [Header("Wander")]
-        // how far from its spawn point the enemy will roam
+        [Tooltip("How far from its spawn point he will roam.")]
         [SerializeField] float wanderRadius = 12f;
 
-        // seconds walking towards a point before giving up on it
+        [Tooltip("Seconds walking to a patrol point before dropping it.")]
         [SerializeField] float wanderTimeout = 15f;
 
         [Header("Idle")]
-        // seconds standing still between wander points
+        [Tooltip("Shortest pause between patrol points.")]
         [SerializeField] float idleDurationMin = 2f;
+        [Tooltip("Longest pause between patrol points.")]
         [SerializeField] float idleDurationMax = 6f;
 
         NavMeshAgent agent;
@@ -99,19 +94,38 @@ namespace COMP602
         EnemyAttackState attackState;
         EnemyHealth health;
 
-        // null on a non-humanoid rig, the body is used instead
+        // null on non-humanoid rigs, uses the body
         Transform head;
 
         State state = State.Idle;
         Vector3 spawnPoint;
 
-        // when the current Idle ends, or the current Wander gives up
+        // end of the current Idle or Wander
         float stateEndTime;
 
-        // below this the chase cannot be broken by range
+        // chase ignores range and leash until this time
         float alertUntil;
 
-        // public so the debug drawing matches what is actually tested
+        // when the chase stopped moving, NegativeInfinity while moving
+        float stuckSince = float.NegativeInfinity;
+
+        // player ignored until this time
+        float ignoreTargetUntil;
+
+        // got close during this chase, suspends the leash
+        bool caughtUp;
+
+        // last time the player was in Hearing Range during a chase
+        float lastCloseTime;
+
+        public bool IsChasing => state == State.Chase;
+
+        // chase stalled for Stuck Timeout
+        public bool IsStuckChasing => state == State.Chase
+            && stuckSince > float.NegativeInfinity
+            && Time.time >= stuckSince + stuckTimeout;
+
+        // public so the debug drawing uses the same values
         public Vector3 EyePosition => head != null
             ? head.position
             : transform.position + Vector3.up * eyeHeight;
@@ -125,7 +139,7 @@ namespace COMP602
 
                 Vector3 forward = Quaternion.Euler(headForwardOffset) * head.forward;
 
-                // flattened, looking up or down must not narrow the cone
+                // flattened so looking up or down keeps the cone width
                 forward.y = 0f;
 
                 return forward.sqrMagnitude < 0.001f
@@ -149,7 +163,7 @@ namespace COMP602
 
         void Start()
         {
-            // optional, being shot alerts the enemy
+            // being shot alerts the enemy
             if (health != null)
                 health.OnDamaged.AddListener(HandleDamaged);
 
@@ -182,11 +196,11 @@ namespace COMP602
         {
             if (attackState != null && attackState.IsAttacking)
             {
-                // chase speed whatever the state, reporting zero would make
-                // the blend tree climb from idle once the attack releases
+                // keeps chase speed so the blend tree doesn't restart from idle
+                // after the attack
                 ReportSpeed(chaseSpeed);
 
-                // keeps the path current, so the agent is not a frame behind
+                // keeps the path updated during the attack
                 if (state == State.Chase && agent.isOnNavMesh && !agent.pathPending)
                     agent.SetDestination(target.position);
 
@@ -205,6 +219,10 @@ namespace COMP602
 
                 case State.Chase:
                     UpdateChase();
+                    break;
+
+                case State.Return:
+                    UpdateReturn();
                     break;
             }
         }
@@ -235,7 +253,7 @@ namespace COMP602
 
             ReportSpeed(agent.velocity.magnitude);
 
-            // unreachable point or a blocked path, stop waiting on it
+            // timed out, unreachable point or blocked path
             if (Time.time >= stateEndTime)
             {
                 EnterIdle();
@@ -253,30 +271,117 @@ namespace COMP602
 
         void UpdateChase()
         {
-            // the alert window holds the chase open regardless of distance
+            // alert keeps the chase going at any distance
             bool alerted = Time.time < alertUntil;
 
             if (!alerted &&
                 Vector3.Distance(transform.position, target.position) > loseSightRange)
             {
-                EnterIdle();
+                GiveUpChase(0f);
+                return;
+            }
+
+            bool close = Vector3.Distance(transform.position, target.position) <= hearingRange;
+
+            // getting close commits him to the chase
+            if (close && (alerted || !leashBrokenByDamageOnly))
+            {
+                caughtUp = true;
+                lastCloseTime = Time.time;
+            }
+            else if (close)
+            {
+                lastCloseTime = Time.time;
+            }
+
+            // commitment ends once the player stays away for Caught Up Timeout
+            if (caughtUp && Time.time >= lastCloseTime + caughtUpTimeout)
+                caughtUp = false;
+
+            // leash keeps him near spawn, skipped while alerted or caught up
+            if (!alerted && !caughtUp &&
+                Vector3.Distance(transform.position, spawnPoint) > leashRange)
+            {
+                GiveUpChase(leashIgnoreDuration);
                 return;
             }
 
             agent.SetDestination(target.position);
 
-            // intended speed rather than measured, the Animator must not dip
-            // through the walk range while the agent accelerates
+            // intended speed so the animation doesn't dip into walk while
+            // accelerating
             ReportSpeed(chaseSpeed);
+
+            TrackProgress();
+        }
+
+        // gives up when the chase stops moving
+        // the agent waits at the NavMesh edge when the player is out of reach
+        void TrackProgress()
+        {
+            bool closingIn = agent.velocity.sqrMagnitude > 0.04f;
+
+            if (closingIn || agent.pathPending)
+            {
+                stuckSince = float.NegativeInfinity;
+                return;
+            }
+
+            if (stuckSince <= float.NegativeInfinity)
+                stuckSince = Time.time;
+
+            if (Time.time < stuckSince + stuckTimeout)
+                return;
+
+            GiveUpChase(stuckIgnoreDuration);
+        }
+
+        // ends the chase, runs home if far from spawn
+        // the ignore window stops an instant re-chase
+        void GiveUpChase(float ignoreDuration)
+        {
+            if (ignoreDuration > 0f)
+                ignoreTargetUntil = Time.time + ignoreDuration;
+
+            if (Vector3.Distance(transform.position, spawnPoint) > runHomeDistance)
+            {
+                EnterReturn();
+                return;
+            }
+
+            EnterIdle();
+        }
+
+        // runs back to spawn, then patrols again
+        void UpdateReturn()
+        {
+            if (NoticesTarget())
+            {
+                EnterChase();
+                return;
+            }
+
+            ReportSpeed(chaseSpeed);
+
+            if (agent.pathPending)
+                return;
+
+            if (agent.remainingDistance > agent.stoppingDistance)
+                return;
+
+            EnterIdle();
         }
 
         void EnterIdle()
         {
             state = State.Idle;
+            stuckSince = float.NegativeInfinity;
+            caughtUp = false;
+            lastCloseTime = Time.time;
 
             agent.speed = wanderSpeed;
 
-            // clearing the path stops the agent drifting during the pause
+            // clears the path so he stops in place
             if (agent.isOnNavMesh)
                 agent.ResetPath();
 
@@ -287,8 +392,7 @@ namespace COMP602
         {
             Vector3 random = spawnPoint + Random.insideUnitSphere * wanderRadius;
 
-            // the random point is almost never on the NavMesh, so this snaps
-            // it to the nearest walkable spot, failing is normal near an edge
+            // snaps the random point to the NavMesh, can fail near edges
             if (!NavMesh.SamplePosition(random, out NavMeshHit hit, wanderRadius, NavMesh.AllAreas))
             {
                 EnterIdle();
@@ -296,6 +400,9 @@ namespace COMP602
             }
 
             state = State.Wander;
+            stuckSince = float.NegativeInfinity;
+            caughtUp = false;
+            lastCloseTime = Time.time;
 
             agent.speed = wanderSpeed;
             agent.SetDestination(hit.position);
@@ -306,14 +413,30 @@ namespace COMP602
         void EnterChase()
         {
             state = State.Chase;
+            stuckSince = float.NegativeInfinity;
+            caughtUp = false;
+            lastCloseTime = Time.time;
             agent.speed = chaseSpeed;
         }
 
-        // being hit alerts the enemy wherever the shot came from, and opens
-        // the alert window so the chase survives the distance check
+        void EnterReturn()
+        {
+            state = State.Return;
+            stuckSince = float.NegativeInfinity;
+            caughtUp = false;
+            lastCloseTime = Time.time;
+
+            agent.speed = chaseSpeed;
+            agent.SetDestination(spawnPoint);
+        }
+
+        // a hit alerts him from any range
         void HandleDamaged()
         {
             alertUntil = Time.time + alertDuration;
+
+            // a shot ends the ignore window
+            ignoreTargetUntil = 0f;
 
             if (state == State.Chase)
                 return;
@@ -324,6 +447,9 @@ namespace COMP602
         // sight inside the cone, or hearing in any direction
         bool NoticesTarget()
         {
+            if (Time.time < ignoreTargetUntil)
+                return false;
+
             float distance = Vector3.Distance(transform.position, target.position);
 
             if (distance <= hearingRange)
@@ -335,7 +461,7 @@ namespace COMP602
             Vector3 toTarget = target.position - transform.position;
             toTarget.y = 0f;
 
-            // half the cone on each side of where the head is facing
+            // half the cone on each side of the head
             if (Vector3.Angle(EyeForward, toTarget) > viewAngle * 0.5f)
                 return false;
 
@@ -355,7 +481,7 @@ namespace COMP602
 
         void ReportSpeed(float value)
         {
-            // damped rather than set, so the blend tree eases between clips
+            // damped so the blend tree eases between clips
             if (animator != null)
             {
                 float normalised = chaseSpeed > 0f ? value / chaseSpeed : 0f;
@@ -363,9 +489,33 @@ namespace COMP602
             }
         }
 
-        // Scene view only, see EnemyDebugRanges for the Game view version.
-        // Sight cone in red, lose-sight in yellow, hearing in magenta and
-        // wander area in cyan.
+        // warns about values that conflict
+        void OnValidate()
+        {
+            if (leashRange <= wanderRadius)
+            {
+                Debug.LogWarning($"{nameof(EnemyAI)}: Leash Range should be above Wander " +
+                                 "Radius, or he gives up chasing inside his own patrol " +
+                                 "area.", this);
+            }
+
+            if (leashRange <= loseSightRange)
+            {
+                Debug.LogWarning($"{nameof(EnemyAI)}: Leash Range should be above Lose " +
+                                 "Sight Range, or the leash ends ordinary chases instead " +
+                                 "of only the long ones.", this);
+            }
+
+            if (loseSightRange <= detectionRange)
+            {
+                Debug.LogWarning($"{nameof(EnemyAI)}: Lose Sight Range should sit a few " +
+                                 "metres above Detection Range, or he flips between " +
+                                 "chasing and patrolling at the edge.", this);
+            }
+        }
+
+        // scene view only, EnemyDebugRanges draws in the Game view
+        // red sight, yellow lose sight, magenta hearing, cyan wander, green leash
         void OnDrawGizmosSelected()
         {
             Vector3 eye = Application.isPlaying
@@ -389,9 +539,13 @@ namespace COMP602
             Gizmos.color = Color.magenta;
             Gizmos.DrawWireSphere(transform.position, hearingRange);
 
+            Vector3 home = Application.isPlaying ? spawnPoint : transform.position;
+
             Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(Application.isPlaying ? spawnPoint : transform.position,
-                                  wanderRadius);
+            Gizmos.DrawWireSphere(home, wanderRadius);
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(home, leashRange);
         }
     }
 }

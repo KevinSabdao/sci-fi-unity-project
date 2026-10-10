@@ -7,7 +7,10 @@ namespace COMP602
     // Debug only. Draws the EnemyAI detection ranges in the Game view, where
     // Scene gizmos do not show. Same colours as the gizmos: detection range
     // and view cone in red, lose sight in yellow, hearing in magenta, wander
-    // area in cyan.
+    // area in cyan, leash in green.
+    //
+    // The leash sits around the spawn point rather than the enemy, so it
+    // shares a centre with the wander circle.
     //
     // Ranges are read off EnemyAI by reflection, so they always match the
     // Inspector without anything being wired up. The cone comes from the
@@ -45,6 +48,7 @@ namespace COMP602
         FieldInfo loseSightRangeField;
         FieldInfo hearingRangeField;
         FieldInfo wanderRadiusField;
+        FieldInfo leashRangeField;
         FieldInfo spawnPointField;
 
         bool visible;
@@ -61,6 +65,7 @@ namespace COMP602
             loseSightRangeField = type.GetField("loseSightRange", flags);
             hearingRangeField = type.GetField("hearingRange", flags);
             wanderRadiusField = type.GetField("wanderRadius", flags);
+            leashRangeField = type.GetField("leashRange", flags);
             spawnPointField = type.GetField("spawnPoint", flags);
 
             visible = startVisible;
@@ -98,6 +103,7 @@ namespace COMP602
             float loseSightRange = ReadFloat(loseSightRangeField);
             float hearingRange = ReadFloat(hearingRangeField);
             float wanderRadius = ReadFloat(wanderRadiusField);
+            float leashRange = ReadFloat(leashRangeField);
 
             Vector3 spawnPoint = transform.position;
 
@@ -114,7 +120,10 @@ namespace COMP602
             DrawCircle(ground, detectionRange, Color.red);
             DrawCircle(ground, loseSightRange, Color.yellow);
             DrawCircle(ground, hearingRange, Color.magenta);
-            DrawCircle(spawnPoint + Vector3.up * groundOffset, wanderRadius, Color.cyan);
+            Vector3 spawnGround = spawnPoint + Vector3.up * groundOffset;
+
+            DrawCircle(spawnGround, wanderRadius, Color.cyan);
+            DrawCircle(spawnGround, leashRange, Color.green);
 
             DrawViewCone(viewAngle, detectionRange);
 

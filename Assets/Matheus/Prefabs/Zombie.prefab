@@ -1497,6 +1497,13 @@ MonoBehaviour:
   alertDuration: 8
   wanderSpeed: 0.6
   chaseSpeed: 3.5
+  leashRange: 25
+  leashIgnoreDuration: 1.5
+  leashBrokenByDamageOnly: 1
+  caughtUpTimeout: 6
+  stuckTimeout: 4
+  stuckIgnoreDuration: 10
+  runHomeDistance: 15
   wanderRadius: 12
   wanderTimeout: 15
   idleDurationMin: 2
@@ -1536,7 +1543,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85315dee61f1a5b438cab4e89de9e4ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::COMP602.Health
-  maxHealth: 100
+  maxHealth: 250
   destroyDelay: 0
   OnDied:
     m_PersistentCalls:
@@ -1707,6 +1714,7 @@ MonoBehaviour:
   targetHeightOffset: 1.4
   maxLookDistance: 25
   maxLookAngle: 110
+  onlyWhileChasing: 1
   fadeTime: 0.25
 --- !u!1 &5876603863631183384
 GameObject:

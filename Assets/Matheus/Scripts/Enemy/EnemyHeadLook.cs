@@ -2,14 +2,13 @@ using UnityEngine;
 
 namespace COMP602
 {
-    // Turns the enemy's head towards the player using the Animator's built-in
-    // look-at IK. Works on top of whatever clip is playing, so the zombie
-    // keeps watching the player through walking, attacking and screaming.
+    // turns the head towards the player with the Animator look-at IK
+    // works on top of whatever clip is playing
     //
     // SETUP
-    // Goes on the enemy root, next to the Animator. The rig must be Humanoid,
-    // and IK Pass must be ticked on the Base Layer (Animator window, Layers
-    // tab, gear icon on the layer).
+    // goes on the enemy root, next to the Animator
+    // the rig must be Humanoid, and IK Pass must be ticked on the Base Layer
+    // EnemyAI is optional, and gates the look to chases
     public class EnemyHeadLook : MonoBehaviour
     {
         // who to look at, empty finds the object tagged Player
@@ -24,7 +23,7 @@ namespace COMP602
         [Range(0f, 1f)]
         [SerializeField] float headWeight = 1f;
 
-        // how much the chest follows, small values read better
+        // how much the chest follows
         [Range(0f, 1f)]
         [SerializeField] float bodyWeight = 0.25f;
 
@@ -32,19 +31,24 @@ namespace COMP602
         [Range(0f, 1f)]
         [SerializeField] float eyesWeight = 0f;
 
-        // keeps the neck inside a believable range, 0.5 is about human
+        // neck limit, 0.5 is about human
         [Range(0f, 1f)]
         [SerializeField] float clampWeight = 0.5f;
 
         [Header("Aim")]
-        // raised to the head rather than the feet
+        // raises the aim point from the feet to the head
         [SerializeField] float targetHeightOffset = 1.4f;
 
-        // beyond this the enemy stops bothering to look
+        // beyond this he stops looking
         [SerializeField] float maxLookDistance = 25f;
 
-        // past this the look fades instead of twisting the neck
+        // past this the look fades out
         [SerializeField] float maxLookAngle = 110f;
+
+        // on, he only watches the player while chasing
+        // off, he watches whenever the player is in range, which gives him
+        // away and aims the EnemyAI view cone at the player
+        [SerializeField] bool onlyWhileChasing = true;
 
         [Header("Smoothing")]
         // fade time, stops the head snapping at the edge of range
@@ -52,12 +56,16 @@ namespace COMP602
 
         Animator animator;
 
+        // optional, only read when Only While Chasing is on
+        EnemyAI ai;
+
         // eased towards the wanted weight each frame
         float currentWeight;
 
         void Awake()
         {
             animator = GetComponent<Animator>();
+            ai = GetComponent<EnemyAI>();
         }
 
         void Start()
@@ -78,7 +86,7 @@ namespace COMP602
             }
         }
 
-        // called by the Animator, but only when IK Pass is on
+        // called by the Animator, only when IK Pass is on
         void OnAnimatorIK(int layerIndex)
         {
             if (animator == null || target == null)
@@ -88,7 +96,7 @@ namespace COMP602
 
             float wanted = ShouldLook(lookPoint) ? weight : 0f;
 
-            // drifts into the look instead of popping to it
+            // drifts into the look
             currentWeight = Mathf.MoveTowards(currentWeight, wanted,
                                               Time.deltaTime / Mathf.Max(fadeTime, 0.0001f));
 
@@ -106,12 +114,15 @@ namespace COMP602
 
         bool ShouldLook(Vector3 lookPoint)
         {
+            if (onlyWhileChasing && ai != null && !ai.IsChasing)
+                return false;
+
             Vector3 toTarget = lookPoint - transform.position;
 
             if (toTarget.sqrMagnitude > maxLookDistance * maxLookDistance)
                 return false;
 
-            // flattened, looking up or down must not count against the angle
+            // flattened, so looking up or down keeps the angle
             Vector3 flat = toTarget;
             flat.y = 0f;
 
