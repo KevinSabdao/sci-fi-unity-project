@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 1456089179606624883}
   - component: {fileID: 7458234377498009680}
   - component: {fileID: 2189518291206793028}
+  - component: {fileID: 6672148880406897036}
   m_Layer: 6
   m_Name: PlayerTest
   m_TagString: Player
@@ -148,6 +149,9 @@ MonoBehaviour:
   fontSize: 48
   margin: {x: 32, y: 32}
   textColor: {r: 1, g: 1, b: 1, a: 1}
+  backgroundColor: {r: 0, g: 0, b: 0, a: 0.55}
+  padding: 12
+  infectedColor: {r: 0.35, g: 0.75, b: 0, a: 1}
 --- !u!114 &2189518291206793028
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -160,12 +164,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ac593ca5d2af75418f33033879bef56, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::COMP602.PlayerGrabEffect
-  tintColor: {r: 0.7, g: 0, b: 0, a: 1}
-  maxAlpha: 0.35
-  pulseSpeed: 3
-  shakeAmount: 6
-  shakeRate: 8
+  profiles:
+  - name: Grab (Tint)
+    effect: 0
+    style: 0
+    tintColor: {r: 0.7, g: 0, b: 0, a: 1}
+    maxAlpha: 0.35
+    pulseSpeed: 3
+    borderWidth: 0.15
+    shakeAmount: 6
+    shakeRate: 8
+  - name: Infect (Tint)
+    effect: 1
+    style: 0
+    tintColor: {r: 0.35, g: 0.75, b: 0, a: 1}
+    maxAlpha: 0.35
+    pulseSpeed: 3
+    borderWidth: 0.15
+    shakeAmount: 6
+    shakeRate: 8
+  - name: Infected (Border)
+    effect: 2
+    style: 1
+    tintColor: {r: 0.35, g: 0.75, b: 0, a: 1}
+    maxAlpha: 0.35
+    pulseSpeed: 0.5
+    borderWidth: 0.08
+    shakeAmount: 0
+    shakeRate: 8
   returnSpeed: 5
+--- !u!114 &6672148880406897036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4465681360850246474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1acd65efffe772a4fa4cb15bc73eea1e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::COMP602.PlayerStatusEffects
+  infection:
+    damagePerTick: 1
+    tickInterval: 2
+    duration: 60
+    healthFloorPercent: 30
+    screenEffect: 2
 --- !u!1 &7510996172379370702
 GameObject:
   m_ObjectHideFlags: 0

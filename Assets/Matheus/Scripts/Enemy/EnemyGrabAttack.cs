@@ -18,10 +18,12 @@ namespace COMP602
     // Camera somewhere below it.
     //
     // INTEGRATION
-    // PlayerHealth is the only hard dependency, referenced by type.
-    // FirstPersonMovement, FirstPersonLook, FirstPersonSprintJump and
-    // PlayerGrabEffect are found by type name at runtime instead, so their
-    // scripts can be absent from the project entirely and this still compiles.
+    // PlayerHealth and PlayerScreenEffects are referenced by type
+    // PlayerScreenEffects is optional, without it the grab has no screen effect
+    // PlayerHands takes the weapons and inventory away during the hold
+    // FirstPersonMovement, FirstPersonLook and FirstPersonSprintJump are found
+    // by type name at runtime instead, so their scripts can be absent from the
+    // project entirely and this still compiles.
     // The catch is that everything about them fails quietly: with no
     // FirstPersonMovement the player is never actually held and the grab
     // becomes decoration, and a renamed method produces no error either.
@@ -62,7 +64,16 @@ namespace COMP602
         [ReadOnly]
         [SerializeField] float recoveryTime = 3.1f;
 
+        // which PlayerScreenEffects entry plays while the player is held
+        [SerializeField] ScreenEffect screenEffect = ScreenEffect.Grab;
+
+        // infects the player when the grab damage lands, set per prefab
+        [ReadOnly]
+        [SerializeField] bool infects;
+
         PlayerHealth targetHealth;
+        PlayerScreenEffects targetEffects;
+        PlayerStatusEffects targetStatus;
         Transform targetCamera;
 
         // held as MonoBehaviour and looked up by type name, so the project
@@ -70,13 +81,11 @@ namespace COMP602
         MonoBehaviour targetMovement;
         MonoBehaviour targetSprintJump;
         MonoBehaviour targetLook;
-        MonoBehaviour targetEffect;
 
         // resolved once in Start, not per grab
         MethodInfo addImpulse;
         PropertyInfo speedMultiplier;
         MethodInfo syncFromTransform;
-        MethodInfo setEffectActive;
 
         EnemyAttackState attackState;
         NavMeshAgent agent;
@@ -111,11 +120,12 @@ namespace COMP602
             }
 
             targetHealth = target.GetComponentInParent<PlayerHealth>();
+            targetEffects = target.GetComponentInParent<PlayerScreenEffects>();
+            targetStatus = target.GetComponentInParent<PlayerStatusEffects>();
 
             targetMovement = FindByTypeName("FirstPersonMovement");
             targetSprintJump = FindByTypeName("FirstPersonSprintJump");
             targetLook = FindByTypeName("FirstPersonLook");
-            targetEffect = FindByTypeName("PlayerGrabEffect");
 
             if (targetMovement != null)
             {
@@ -127,9 +137,6 @@ namespace COMP602
 
             if (targetLook != null)
                 syncFromTransform = targetLook.GetType().GetMethod("SyncFromTransform");
-
-            if (targetEffect != null)
-                setEffectActive = targetEffect.GetType().GetMethod("SetActive");
 
             Camera camera = target.GetComponentInChildren<Camera>();
 
@@ -189,6 +196,14 @@ namespace COMP602
             yield return new WaitForSeconds(remaining);
 
             targetHealth.TakeDamage(damage);
+
+            if (infects && targetStatus != null)
+            {
+                targetStatus.Infect();
+
+                // TEMP infection debug
+                Debug.Log("[Infection] INFECTED by grab", this);
+            }
 
             Release();
 
@@ -285,8 +300,14 @@ namespace COMP602
             if (targetLook != null)
                 targetLook.enabled = !held;
 
-            if (setEffectActive != null)
-                setEffectActive.Invoke(targetEffect, new object[] { held });
+            if (targetEffects != null)
+                targetEffects.SetActive(screenEffect, held);
+
+            // hides the weapons, stops them firing and blocks the inventory
+            if (held)
+                PlayerHands.Lock();
+            else
+                PlayerHands.Unlock();
         }
 
         void SyncLook()

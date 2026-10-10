@@ -22,6 +22,9 @@ namespace COMP602
         public static event Action<PlayerHealth, float> AnyDamaged;
         public static event Action<PlayerHealth> AnyRespawned;
 
+        // raised by any heal above zero, even at full health
+        public event Action Healed;
+
         public float Current { get; private set; }
         public float Max => maxHealth;
         public bool IsAlive => Current > 0f;
@@ -62,6 +65,24 @@ namespace COMP602
                 return;
 
             Current = Mathf.Min(Current + amount, maxHealth);
+
+            Healed?.Invoke();
+        }
+
+        // health lost to status effects, skips OnDamaged so hit feedback only
+        // plays on real hits
+        public void Drain(float amount)
+        {
+            if (!IsAlive)
+                return;
+
+            if (amount <= 0f)
+                return;
+
+            Current = Mathf.Max(Current - amount, 0f);
+
+            if (Current <= 0f)
+                Respawn();
         }
 
         void Respawn()

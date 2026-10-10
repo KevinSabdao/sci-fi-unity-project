@@ -21,6 +21,15 @@ namespace COMP602
         [SerializeField] int missesBeforeSpitMin = 3;
         [SerializeField] int missesBeforeSpitMax = 5;
 
+        [Header("Infection")]
+        // chance for each spit hit to infect, 0 to rely on the guarantee only
+        [SerializeField, Range(0f, 100f)] float infectionChancePercent = 10f;
+
+        // dodged spits in a row before the next hit is certain to infect
+        // a new value is rolled between these after every infection, 0 and 0 turns it off
+        [SerializeField] int missesBeforeInfectionMin = 3;
+        [SerializeField] int missesBeforeInfectionMax = 5;
+
         EnemyMeleeAttack melee;
 
         // missed melee hits since the last hit or spit
@@ -29,6 +38,12 @@ namespace COMP602
         // rolled in Awake, then again after every spit
         int missesBeforeSpit;
 
+        // dodged spits in a row, any hit resets it
+        int spitMisses;
+
+        // rolled in Awake, then again after every infection, 0 when turned off
+        int missesBeforeInfection;
+
         bool armed;
 
         void Awake()
@@ -36,6 +51,7 @@ namespace COMP602
             melee = GetComponent<EnemyMeleeAttack>();
 
             RollMissesBeforeSpit();
+            RollMissesBeforeInfection();
         }
 
         void OnEnable()
@@ -90,6 +106,57 @@ namespace COMP602
             missesBeforeSpit = Random.Range(low, high + 1);
         }
 
+        // called by EnemySpitProjectile when it misses the player
+        public void HandleSpitMissed()
+        {
+            spitMisses++;
+
+            // TEMP infection debug
+            Debug.Log($"[Infection] spit missed, dodge streak {spitMisses}/{missesBeforeInfection}", this);
+        }
+
+        // called by EnemySpitProjectile when it hits the player
+        public void HandleSpitHit(PlayerStatusEffects status)
+        {
+            // no status component on the player, nothing to infect
+            if (status == null)
+                return;
+
+            // dodging too many spits in a row makes the next hit certain
+            bool guaranteed = missesBeforeInfection > 0 && spitMisses >= missesBeforeInfection;
+            float roll = Random.value * 100f;
+            bool lucky = roll < infectionChancePercent;
+
+            // TEMP infection debug
+            Debug.Log($"[Infection] spit hit, roll {roll:0.0} vs chance {infectionChancePercent}%, " +
+                      $"dodge streak {spitMisses}/{missesBeforeInfection} -> " +
+                      (guaranteed ? "INFECTED by dodge streak" : lucky ? "INFECTED by chance" : "not infected"), this);
+
+            // the hit breaks the dodge streak either way
+            spitMisses = 0;
+
+            if (!guaranteed && !lucky)
+                return;
+
+            RollMissesBeforeInfection();
+
+            status.Infect();
+        }
+
+        void RollMissesBeforeInfection()
+        {
+            if (missesBeforeInfectionMax <= 0)
+            {
+                missesBeforeInfection = 0;
+                return;
+            }
+
+            int low = Mathf.Max(missesBeforeInfectionMin, 1);
+            int high = Mathf.Max(missesBeforeInfectionMax, low);
+
+            missesBeforeInfection = Random.Range(low, high + 1);
+        }
+
         // called by an Animation Event on the scream clip
         public void FireProjectile()
         {
@@ -103,7 +170,11 @@ namespace COMP602
 
             Vector3 direction = target.position + Vector3.up * 1.2f - spawnPoint.position;
 
-            Instantiate(projectilePrefab, spawnPoint.position, Quaternion.LookRotation(direction));
+            GameObject projectile = Instantiate(projectilePrefab, spawnPoint.position,
+                                                Quaternion.LookRotation(direction));
+
+            if (projectile.TryGetComponent(out EnemySpitProjectile spit))
+                spit.Init(this);
         }
     }
 }

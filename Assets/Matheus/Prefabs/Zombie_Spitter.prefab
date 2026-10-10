@@ -1637,6 +1637,8 @@ MonoBehaviour:
   faceTurnDuration: 0.3
   pushForce: 7
   recoveryTime: 2.5
+  screenEffect: 1
+  infects: 1
 --- !u!114 &1763795235470628552
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1662,7 +1664,7 @@ MonoBehaviour:
   - label: Grab
     attack: {fileID: 317456569427028039}
     variantIndex: 0
-    weight: 3
+    weight: 1.5
   attackRange: 2
   cooldown: 0.3
   maxAttackDuration: 10
@@ -1766,6 +1768,9 @@ MonoBehaviour:
   spawnPoint: {fileID: 7130316137929207195}
   missesBeforeSpitMin: 1
   missesBeforeSpitMax: 1
+  infectionChancePercent: 5
+  missesBeforeInfectionMin: 4
+  missesBeforeInfectionMax: 6
 --- !u!1 &5876603863631183384
 GameObject:
   m_ObjectHideFlags: 0
