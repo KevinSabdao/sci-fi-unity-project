@@ -1,6 +1,7 @@
 using COMP602;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -149,25 +150,72 @@ public class Inventory : MonoBehaviour
     {
         bool addedToInventory;
 
+        // Put item into next available stack (if one exists)
+        addedToInventory = ExistingStackExists(pickedUpItem);
+
         // Put item into next active slot
-        addedToInventory = CheckItemSlots(itemSlotsActive, true, pickedUpItem);
+        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsActive, true, pickedUpItem);
 
         // Put item into storage if no active slots are available
-        if (!addedToInventory)
+        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsInactive, false, pickedUpItem);
+    }
+
+    private bool ExistingStackExists(GameObject item)
+    {
+        // Get item components to compare stack sizes
+        Item itemFrom = item.GetComponent<Item>();
+        Item itemTo;
+
+        // Check if a slot has an incomplete stack of the same item type
+        foreach(ItemSlot itemSlot in itemSlotsActive.Concat(itemSlotsInactive))
         {
-            CheckItemSlots(itemSlotsInactive, false, pickedUpItem);
+            if (itemSlot.itemObject == null) { continue; }
+        
+            itemTo = itemSlot.itemItem;
+            if (
+                    itemTo.itemType == itemFrom.itemType &&
+                    itemTo.stackCount < itemTo.stackCountMax
+            )
+            {
+                // If the transfer stack was successful (no remainder)
+                if (TransferItemStack(item, itemSlot.itemObject)) return true;
+            }
         }
+
+        return false;
+    }
+
+    public bool TransferItemStack(GameObject itemFromObject, GameObject itemToObject)
+    {
+        Item itemFromItem = itemFromObject.GetComponent<Item>();
+        Item itemToItem = itemToObject.GetComponent<Item>();
+
+        // Calculate highest transfer amount (as stack sizes aren't always 1)
+        int stackTransfer = Math.Min(itemToItem.stackCountMax - itemToItem.stackCount, itemFromItem.stackCount);
+        itemToItem.stackCount += stackTransfer;
+        itemFromItem.stackCount -= stackTransfer;
+
+        // Delete the from stack if it no longer has items
+        if (itemFromItem.stackCount <= 0)
+        {
+            Destroy(itemFromObject);
+        }
+
+        return itemFromItem.stackCount <= 0;
+
     }
 
     private bool CheckItemSlots(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
     {
+        // Check if a slot is empty
         for (int i = 0; i < itemSlotsChecking.Count; i++)
         {
-            if (itemSlotsChecking[i].itemObject == null) // if slot is empty
+            if (itemSlotsChecking[i].itemObject == null)
             {
                 AddItemIntoSlot(item, i, isActiveSlot);
                 return true;
             }
+
         }
 
         return false;
@@ -266,10 +314,27 @@ public class Inventory : MonoBehaviour
         DeselectAllSlots();
     }
 
-    public void DropSelectedItem()
+    public void DropSelectedItemOne()
     {
         ItemSlot itemSelected = ItemSlot.itemSelected;
-        GameObject dropItemObject = itemSelected.itemObject;
+        GameObject dropItem = itemSelected.itemObject;
+        Item dropItemItem = dropItem.GetComponent<Item>();
+        
+        // Clone the dropped object and place a single item
+        GameObject dropItemClone = Instantiate(dropItem);
+        dropItemClone.GetComponent<Item>().stackCount = 1;
+        DropItem(dropItemClone);
+
+        // Delete the item if it was the last in the stack
+        dropItemItem.stackCount--;
+        if (dropItemItem.stackCount <= 0)
+        {
+            DeleteSelectedItem();
+        }
+    }
+
+    public void DropItem(GameObject dropItemObject)
+    {
         Item dropItemItem = dropItemObject.GetComponent<Item>();
 
         // Place item on the ground at the player's feet
@@ -287,9 +352,18 @@ public class Inventory : MonoBehaviour
                 this.dropRotation.z
         );
 
+        dropItemItem.isActive = false;
+    }
+
+    public void DropSelectedItemAll()
+    {
+        ItemSlot itemSelected = ItemSlot.itemSelected;
+        GameObject dropItemObject = itemSelected.itemObject;
+
+        DropItem(dropItemObject);
+
         // Internally set it so the item is no longer in the inventory
         AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm);
-        dropItemItem.isActive = false;
         ItemSlot.dropSelected = true;
 
         DeselectAllSlots();

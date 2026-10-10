@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -13,7 +14,6 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
     internal bool thisItemSelected;
     internal bool isArm = false;
     internal int storedIndex;
-    internal int itemStackSize;
 
     // Item slot shared information
     public static bool itemIsSelected = false;
@@ -22,6 +22,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     // Item functionality attributes
     private Image image;
+    private TMP_Text stackCount;
     internal KeyCode keyPress; // Key press to activate item slot
 
     private Inventory inventory;
@@ -30,6 +31,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
     {
         this.selectedSlot = this.transform.GetChild(0).gameObject;
         this.image = this.transform.GetChild(1).GetComponent<Image>();
+        this.stackCount = this.transform.GetChild(2).GetComponent<TMP_Text>();
         this.inventory = Inventory.Instance;
         dropSelected = false;
     }
@@ -50,6 +52,9 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             this.itemObject = null;
             dropSelected = false;
         }
+
+        // Display the stack size
+        this.stackCount.text = (this.itemObject && this.itemItem?.stackCount > 1) ? $"{this.itemItem.stackCount}" : "";
     }
     
     internal void PickupItem(GameObject pickedUpItem)
@@ -93,10 +98,20 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             inventory.DeselectAllSlots();
         }
         
-        // Swap items if clicking on two different items where one is an arm
+        // Swap items if clicking on two different items of different types
         else if (itemIsSelected)
         {
-            inventory.SwapItems(itemSelected, this);
+            if (!this.itemObject || this.itemItem.itemType != itemSelected.itemItem.itemType)
+            {
+                inventory.SwapItems(itemSelected, this);
+            }
+
+            // Combine stacks if clicking on two different items of same types
+            else
+            {
+                inventory.TransferItemStack(itemSelected.itemObject, this.itemObject);
+                inventory.DeselectAllSlots();
+            }
         }
 
         // Select item

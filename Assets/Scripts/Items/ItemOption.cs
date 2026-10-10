@@ -4,7 +4,8 @@ using UnityEngine.EventSystems;
 internal enum OptionType
 {
     Delete,
-    Drop
+    DropAll,
+    DropOne
 }
 
 public class ItemOption : MonoBehaviour, IPointerClickHandler
@@ -25,7 +26,8 @@ public class ItemOption : MonoBehaviour, IPointerClickHandler
             switch (this.optionType)
             {
                 case OptionType.Delete: this.inventory.DeleteSelectedItem(); break;
-                case OptionType.Drop: this.inventory.DropSelectedItem(); break;
+                case OptionType.DropAll: this.inventory.DropSelectedItemAll(); break;
+                case OptionType.DropOne: this.inventory.DropSelectedItemOne(); break;
             }
         }
     }
