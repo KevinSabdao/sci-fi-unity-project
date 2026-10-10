@@ -54,6 +54,9 @@ namespace COMP602
 
         bool attacking;
 
+        // raised when a hit lands or misses, true when it connected
+        public event System.Action<bool> HitResolved;
+
         void Start()
         {
             animator = GetComponent<Animator>();
@@ -127,12 +130,15 @@ namespace COMP602
             yield return new WaitForSeconds(move.damageDelay);
 
             float distance = Vector3.Distance(transform.position, target.position);
+            bool connected = distance <= damageRange;
 
-            if (distance <= damageRange)
+            if (connected)
             {
                 targetHealth.TakeDamage(move.damage);
                 PushPlayer(move.knockback);
             }
+
+            HitResolved?.Invoke(connected);
 
             // the rest of the move plays out before movement resumes
             yield return new WaitForSeconds(Mathf.Max(move.duration - move.damageDelay, 0f));
