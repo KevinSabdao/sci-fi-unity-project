@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using COMP602;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

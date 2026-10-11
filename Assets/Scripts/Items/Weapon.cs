@@ -1,5 +1,4 @@
 using System.Collections;
-using COMP602;
 using UnityEngine;
 
 public class Weapon : Item

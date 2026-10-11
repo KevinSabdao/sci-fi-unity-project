@@ -1,4 +1,3 @@
-using COMP602;
 using UnityEngine;
 
 // damage carrier for a fired round. the weapon that spawns it sets the amount,
