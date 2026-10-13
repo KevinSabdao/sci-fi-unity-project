@@ -7,7 +7,7 @@ public class MeleeWeapon : Weapon
     public float damageVariation = 1f;
     [Range(0f, 1f)]
     public float critChance = 0f;
-    public float critDamage = 0f;
+    public float critMultiplier = 1f;
 
     private void Update()
     {
@@ -37,12 +37,12 @@ public class MeleeWeapon : Weapon
 
     public float CalculateDamage()
     {
-        return this.damage + Random.Range(-damageVariation, damageVariation) + CalculateCrit();
+        return (damage + Random.Range(damageVariation, damageVariation)) * CalculateCrit();
     }
 
     public float CalculateCrit()
     {
-        return 0f;
+        return (Random.Range(0f, 1f) <= critChance) ? critMultiplier : 1f;
     }
 
 }
