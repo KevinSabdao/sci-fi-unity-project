@@ -148,7 +148,7 @@ MonoBehaviour:
   itemName: Energy
   description: This single cube of energy contains enough power to make a getaway
     platform if the situation becomes dire - but it only lasts for 3 seconds!
-  itemType: 0
+  itemType: 1
   stackCountMax: 16
   stackCount: 1
   spawnPosition: {x: 0, y: 0, z: 0}

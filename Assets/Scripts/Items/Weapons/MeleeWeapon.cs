@@ -1,0 +1,48 @@
+using System.Collections;
+using UnityEngine;
+
+public class MeleeWeapon : Weapon
+{
+    // Damage variation
+    public float damageVariation = 1f;
+    [Range(0f, 1f)]
+    public float critChance = 0f;
+    public float critDamage = 0f;
+
+    private void Update()
+    {
+        if (!CanUseWeapon()) return;
+
+        isAttacking = Input.GetKeyDown(keyPressRequired);
+
+        if (readyToAttack && isAttacking)
+        {
+            UseWeapon();
+            durability--;
+        }
+
+    }
+
+    new private void UseWeapon()
+    {
+        readyToAttack = false;
+
+        // Check if we are done swinging
+        if (allowReset)
+        {
+            Invoke("ResetShot", attackingDelay);
+            allowReset = false;
+        }
+    }
+
+    public float CalculateDamage()
+    {
+        return this.damage + Random.Range(-damageVariation, damageVariation) + CalculateCrit();
+    }
+
+    public float CalculateCrit()
+    {
+        return 0f;
+    }
+
+}

@@ -22,7 +22,6 @@ public class Inventory : MonoBehaviour
     private GameObject inactiveItems;
     private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
     private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
-    private readonly Vector3 dropRotation = new Vector3(0, -90, -90);
 
     // Inventory internal item slots
     private List<ItemSlot> itemSlotsActive;
@@ -346,9 +345,9 @@ public class Inventory : MonoBehaviour
                 parentPosition.z
         );
         dropItemObject.transform.localRotation = Quaternion.Euler(
-                this.dropRotation.x,
-                parentRotation.y + this.dropRotation.y,
-                this.dropRotation.z
+                dropItemItem.spawnRotation.x,
+                parentRotation.y + dropItemItem.spawnRotation.y,
+                dropItemItem.spawnRotation.z
         );
 
         dropItemItem.isActive = false;

@@ -98,10 +98,14 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             inventory.DeselectAllSlots();
         }
         
-        // Swap items if clicking on two different items of different types
+        // Swap items if clicking on two different items that don't stack
         else if (itemIsSelected)
         {
-            if (!this.itemObject || this.itemItem.itemType != itemSelected.itemItem.itemType)
+            if (
+                    !this.itemObject ||
+                    this.itemItem.itemType != itemSelected.itemItem.itemType ||
+                    itemSelected.itemItem.stackCountMax == 1
+            )
             {
                 inventory.SwapItems(itemSelected, this);
             }
@@ -109,6 +113,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             // Combine stacks if clicking on two different items of same types
             else
             {
+                print("HERE");
                 inventory.TransferItemStack(itemSelected.itemObject, this.itemObject);
                 inventory.DeselectAllSlots();
             }
