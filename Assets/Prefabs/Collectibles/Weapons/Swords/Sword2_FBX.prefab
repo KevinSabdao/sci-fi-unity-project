@@ -97,12 +97,12 @@ MonoBehaviour:
   spawnRotation: {x: 90, y: 0, z: 0}
   durabilityMax: 100
   durability: 0
-  swingingDelay: 2
+  attackingDelay: 2
   damage: 25
   damageVariation: 1
   critChance: 0
-  critDamage: 0
-  thisWeaponModel: 0
+  critMultiplier: 1
+  range: 2
 --- !u!114 &243333731626700327
 MonoBehaviour:
   m_ObjectHideFlags: 0

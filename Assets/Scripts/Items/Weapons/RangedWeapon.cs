@@ -3,8 +3,6 @@ using UnityEngine;
 
 public class RangedWeapon : Weapon
 {
-    public Camera playerCamera;
-
     // Burst
     public int bulletsPerBurst = 3;
     public int burstBulletsLeft;
@@ -64,7 +62,7 @@ public class RangedWeapon : Weapon
 
     }
 
-    new private void UseWeapon()
+    public override void UseWeapon()
     {
         readyToAttack = false;
 

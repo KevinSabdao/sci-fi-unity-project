@@ -5,20 +5,92 @@ using UnityEngine.TestTools;
 
 public class MeleeWeaponTest
 {
-    // A Test behaves as an ordinary method
-    [Test]
-    public void MeleeWeaponSimplePasses()
+    private GameObject playerTest;
+    private MeleeWeapon meleeWeapon;
+    private Camera playerCamera;
+    private GameObject enemy;
+
+    [SetUp]
+    public void Setup()
     {
-        // Use the Assert class to test conditions
+        // Create new weapon, camera, and enemy
+        playerTest = new GameObject();
+        meleeWeapon = GameObject.CreatePrimitive(PrimitiveType.Cube).AddComponent<MeleeWeapon>();
+        playerCamera = new GameObject().AddComponent<Camera>();
+        enemy = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+        // Set testing values
+        meleeWeapon.transform.SetParent(playerTest.transform);
+        playerCamera.transform.SetParent(playerTest.transform);
+        meleeWeapon.transform.localPosition = new Vector3(3, -1, 4);
+        meleeWeapon.transform.localRotation = Quaternion.Euler(new Vector3(0, 180, 0));
+        meleeWeapon.playerCamera = playerCamera;
+        meleeWeapon.range = 10;
+        meleeWeapon.transform.localScale = new Vector3(1, 3, 1);
     }
 
-    // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
-    // `yield return null;` to skip a frame.
-    [UnityTest]
-    public IEnumerator MeleeWeaponWithEnumeratorPasses()
+    [TearDown]
+    public void Teardown()
     {
-        // Use the Assert class to test conditions.
-        // Use yield to skip a frame.
-        yield return null;
+        GameObject.DestroyImmediate(meleeWeapon.gameObject);
+        GameObject.DestroyImmediate(playerCamera.gameObject);
+        GameObject.DestroyImmediate(enemy);
+    }
+
+    [UnityTest]
+    public IEnumerator HitEnemySuccess()
+    {
+        // Set up the positions for attacking
+        playerTest.transform.localPosition = new Vector3(0, 0, -8);
+        EnemyHealth enemyHealth = enemy.AddComponent<EnemyHealth>();
+
+        // Store the current health to test if it is lowered
+        float enemyCurrentHealth = enemyHealth.Current;
+        meleeWeapon.UseWeapon();
+
+        yield return new WaitForSeconds(1);
+        Assert.That(enemyCurrentHealth, Is.Not.EqualTo(enemyHealth.Current));
+    }
+
+    [UnityTest]
+    public IEnumerator HitEnemyOutOfRange()
+    {
+        // Set up the positions for attacking
+        playerTest.transform.localPosition = new Vector3(0, 0, -12);
+        EnemyHealth enemyHealth = enemy.AddComponent<EnemyHealth>();
+
+        // Store the current health to test if it is lowered
+        float enemyCurrentHealth = enemyHealth.Current;
+        meleeWeapon.UseWeapon();
+
+        yield return new WaitForSeconds(1);
+        Assert.That(enemyCurrentHealth, Is.EqualTo(enemyHealth.Current));
+    }
+
+    [UnityTest]
+    public IEnumerator HitEnemyNotAnEnemy()
+    {
+        // Set up the positions for attacking
+        playerTest.transform.localPosition = new Vector3(0, 0, -8);
+
+        // Store the current health to test if it is lowered
+        meleeWeapon.UseWeapon();
+
+        yield return new WaitForSeconds(1);
+        // If it doesn't error, it is successful
+    }
+
+    [UnityTest]
+    public IEnumerator HitEnemyNoEnemy()
+    {
+        // Set up the positions for attacking
+        playerTest.transform.localPosition = new Vector3(0, 0, -8);
+        enemy.transform.localPosition = new Vector3(-4, 0, 0);
+
+        // Store the current health to test if it is lowered
+        meleeWeapon.UseWeapon();
+
+        yield return new WaitForSeconds(1);
+        // If it doesn't error, it is successful
     }
 }

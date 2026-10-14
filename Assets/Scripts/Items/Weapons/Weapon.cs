@@ -3,6 +3,8 @@ using UnityEngine;
 
 public abstract class Weapon : Item
 {
+    public Camera playerCamera;
+
     // Durability
     public int durabilityMax;
     public int durability;
@@ -10,7 +12,7 @@ public abstract class Weapon : Item
     // Attacking
     internal bool isAttacking, readyToAttack;
     internal bool allowReset = true;
-    public float attackingDelay = 2f;
+    public float attackingDelay = 1f;
 
     // Damage
     public float damage = 25f;
@@ -39,17 +41,7 @@ public abstract class Weapon : Item
         return true;
     }
 
-    protected void UseWeapon()
-    {
-        readyToAttack = false;
-
-        // Check if we are done shooting
-        if (allowReset)
-        {
-            Invoke("ResetAttack", attackingDelay);
-            allowReset = false;
-        }
-    }
+    public abstract void UseWeapon();
 
     protected void ResetAttack()
     {
