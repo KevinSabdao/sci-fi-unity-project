@@ -43,8 +43,10 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         {
             this.image.sprite = null;
             this.image.enabled = false;
+            itemItem = null;
 
-            
+
+
         }
 
         // Remove the selected item if a special variable is set
@@ -56,13 +58,15 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         }
 
         // Display the stack size
-        
-        
-        this.stackCount.text = (this.itemObject && this.itemItem?.stackCount > 1) ? $"{this.itemItem.stackCount}" : "";
 
-        if (itemObject.GetComponent<Weapon>().durabilityMax > 1)
+
+        if (itemItem?.itemType == ItemType.Weapon)
         {
             this.stackCount.text = $"{((Weapon)itemItem).durability}";
+        }
+        else
+        {
+            this.stackCount.text = (this.itemObject && this.itemItem?.stackCount > 1) ? $"{this.itemItem.stackCount}" : "";
         }
 
 
