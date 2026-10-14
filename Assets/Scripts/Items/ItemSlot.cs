@@ -43,6 +43,8 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         {
             this.image.sprite = null;
             this.image.enabled = false;
+
+            
         }
 
         // Remove the selected item if a special variable is set
@@ -54,7 +56,16 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         }
 
         // Display the stack size
+        
+        
         this.stackCount.text = (this.itemObject && this.itemItem?.stackCount > 1) ? $"{this.itemItem.stackCount}" : "";
+
+        if (itemObject.GetComponent<Weapon>().durabilityMax > 1)
+        {
+            this.stackCount.text = $"{((Weapon)itemItem).durability}";
+        }
+
+
     }
     
     internal void PickupItem(GameObject pickedUpItem)
@@ -82,6 +93,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             OnLeftClick();
@@ -90,25 +102,30 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
 
     public void OnLeftClick()
     {
+        
         if (!itemIsSelected && !this.itemObject) { return; } // Immediately back out if no item is selected
-
+        
         // Deselect if clicking on the same item
         if (itemIsSelected && this == itemSelected)
         {
             inventory.DeselectAllSlots();
+            
         }
         
         // Swap items if clicking on two different items of different types
         else if (itemIsSelected)
         {
+            
             if (!this.itemObject || this.itemItem.itemType != itemSelected.itemItem.itemType)
             {
                 inventory.SwapItems(itemSelected, this);
+                
             }
 
             // Combine stacks if clicking on two different items of same types
             else
             {
+                
                 inventory.TransferItemStack(itemSelected.itemObject, this.itemObject);
                 inventory.DeselectAllSlots();
             }
@@ -117,6 +134,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
         // Select item
         else
         {
+            
             inventory.DeselectAllSlots();
             inventory.SetDescription(this.itemItem, this.image);
 
