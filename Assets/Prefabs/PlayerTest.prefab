@@ -17,6 +17,8 @@ GameObject:
   - component: {fileID: 7458234377498009680}
   - component: {fileID: 2189518291206793028}
   - component: {fileID: 6672148880406897036}
+  - component: {fileID: 6939322889416719981}
+  - component: {fileID: 3918812214010979772}
   m_Layer: 6
   m_Name: PlayerTest
   m_TagString: Player
@@ -92,7 +94,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6f11dc3eac431f4c8c9b2f704cbced6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::COMP602.FirstPersonMovement
-  walkSpeed: 6
+  walkSpeed: 4.5
   groundAcceleration: 15
   gravity: 20
   airAcceleration: 25
@@ -112,7 +114,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee13defcaa6d15649b406ddfa2dfc7a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::COMP602.FirstPersonSprintJump
-  sprintMultiplier: 1.8
+  sprintMultiplier: 1.5
   jumpSpeed: 8
 --- !u!114 &1456089179606624883
 MonoBehaviour:
@@ -152,6 +154,8 @@ MonoBehaviour:
   backgroundColor: {r: 0, g: 0, b: 0, a: 0.55}
   padding: 12
   infectedColor: {r: 0.35, g: 0.75, b: 0, a: 1}
+  messageDuration: 3
+  curedColor: {r: 0.2, g: 0.8, b: 1, a: 1}
 --- !u!114 &2189518291206793028
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -206,11 +210,50 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::COMP602.PlayerStatusEffects
   infection:
-    damagePerTick: 1
-    tickInterval: 2
-    duration: 60
-    healthFloorPercent: 30
+    maxHealthLossPerTick: 1
+    lossInterval: 10
+    maxHealthFloorPercent: 50
+    vaccineHealPerTick: 1
+    vaccineHealInterval: 2
     screenEffect: 2
+--- !u!114 &6939322889416719981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4465681360850246474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c83ed347e7e2cd943adf7a26a7fc3af4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scripts::PlayerStamina
+  useStamina: 1
+  maxStamina: 100
+  drainPerSecond: 20
+  regenPerSecond: 25
+  regenDelay: 1
+  recoverPercent: 30
+--- !u!114 &3918812214010979772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4465681360850246474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5839669d6536514499b5bad578a90cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scripts::PlayerStaminaBar
+  size: {x: 260, y: 10}
+  bottomOffset: 140
+  padding: 4
+  backgroundColor: {r: 0, g: 0, b: 0, a: 0.55}
+  fillColor: {r: 1, g: 1, b: 1, a: 0.9}
+  exhaustedColor: {r: 0.9, g: 0.2, b: 0.15, a: 0.9}
+  hideDelay: 0.8
+  fadeTime: 0.25
 --- !u!1 &7510996172379370702
 GameObject:
   m_ObjectHideFlags: 0

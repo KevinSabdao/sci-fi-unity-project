@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -28,7 +29,37 @@ public class FirstPersonMovement : MonoBehaviour
     [SerializeField] LayerMask groundLayers = ~0;
 
     // multiplier on walk speed, left at 1 unless something else sets it
+    // sprint and the zombie grab write it every frame, so status effects use the modifiers below
     public float SpeedMultiplier { get; set; } = 1f;
+
+    // product of every status speed modifier, 1 with none
+    public float StatusSpeedMultiplier { get; private set; } = 1f;
+
+    // one entry per source, such as 0.6 for a slow, so effects never overwrite each other
+    readonly Dictionary<object, float> speedModifiers = new Dictionary<object, float>();
+
+    // adds or replaces the speed modifier from this source
+    public void SetSpeedModifier(object source, float multiplier)
+    {
+        speedModifiers[source] = multiplier;
+        RecalculateStatusSpeed();
+    }
+
+    public void RemoveSpeedModifier(object source)
+    {
+        if (speedModifiers.Remove(source))
+            RecalculateStatusSpeed();
+    }
+
+    void RecalculateStatusSpeed()
+    {
+        float product = 1f;
+
+        foreach (float multiplier in speedModifiers.Values)
+            product *= multiplier;
+
+        StatusSpeedMultiplier = product;
+    }
 
     // true while the capsule is resting on climbable ground
     public bool IsGrounded { get; private set; }
@@ -155,7 +186,7 @@ public class FirstPersonMovement : MonoBehaviour
         bool moving = localDirection.sqrMagnitude > 0f;
         IsSprinting = moving && SpeedMultiplier > 1f;
 
-        float targetSpeed = walkSpeed * SpeedMultiplier;
+        float targetSpeed = walkSpeed * SpeedMultiplier * StatusSpeedMultiplier;
 
         Vector3 velocity = IsGrounded
             ? GroundVelocity(worldDirection, targetSpeed)

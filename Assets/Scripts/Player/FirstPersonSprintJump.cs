@@ -28,7 +28,14 @@ public class FirstPersonSprintJump : MonoBehaviour
     InputAction jumpAction;
     InputAction sprintAction;
 
-    void Awake() => movement = GetComponent<FirstPersonMovement>();
+    // optional, without it sprint never runs out
+    PlayerStamina stamina;
+
+    void Awake()
+    {
+        movement = GetComponent<FirstPersonMovement>();
+        stamina = GetComponent<PlayerStamina>();
+    }
 
     void Start()
     {
@@ -55,7 +62,9 @@ public class FirstPersonSprintJump : MonoBehaviour
     void Update()
     {
         SprintHeld = sprintAction.IsPressed();
-        movement.SpeedMultiplier = SprintHeld ? sprintMultiplier : 1f;
+
+        bool sprinting = SprintHeld && (stamina == null || stamina.CanSprint);
+        movement.SpeedMultiplier = sprinting ? sprintMultiplier : 1f;
 
         if (jumpAction.WasPressedThisFrame())
             movement.RequestJump(jumpSpeed);
