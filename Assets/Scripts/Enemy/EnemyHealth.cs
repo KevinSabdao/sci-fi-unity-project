@@ -10,6 +10,9 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] float maxHealth = 100f;
 
     [Header("Death")]
+    // off for enemies that stay as a body, such as the boss
+    [SerializeField] bool destroyOnDeath = true;
+
     // keeps the object alive while the death animation plays
     [SerializeField] float destroyDelay = 0f;
 
@@ -25,18 +28,36 @@ public class EnemyHealth : MonoBehaviour
     public float Max => maxHealth;
     public bool IsAlive => Current > 0f;
 
+    // ignores all damage while on, set from code such as the boss during its opening roar
+    public bool Invulnerable { get; set; }
+
+    // DamageZone multiplier of the last hit, above 1 means a weak point, read by UI on OnDamaged
+    public float LastDamageMultiplier { get; private set; } = 1f;
+
     void Awake()
     {
         Current = maxHealth;
     }
 
-    public void TakeDamage(float amount)
+    public void TakeDamage(float amount) => TakeDamage(amount, null);
+
+    // hitCollider is the collider the weapon struck, its DamageZone scales the damage
+    public void TakeDamage(float amount, Collider hitCollider)
     {
-        if (!IsAlive)
+        if (!IsAlive || Invulnerable)
             return;
+
+        float multiplier = 1f;
+
+        if (hitCollider != null && hitCollider.TryGetComponent(out DamageZone zone))
+            multiplier = zone.Multiplier;
+
+        amount *= multiplier;
 
         if (amount <= 0f)
             return;
+
+        LastDamageMultiplier = multiplier;
 
         Current = Mathf.Max(Current - amount, 0f);
 
@@ -63,6 +84,7 @@ public class EnemyHealth : MonoBehaviour
         OnDied?.Invoke();
         AnyDied?.Invoke(this);
 
-        Destroy(gameObject, destroyDelay);
+        if (destroyOnDeath)
+            Destroy(gameObject, destroyDelay);
     }
 }

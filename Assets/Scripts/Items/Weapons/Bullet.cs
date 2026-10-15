@@ -29,6 +29,8 @@ public class Bullet : MonoBehaviour
         if (!health) return;
 
         hasHit = true;
-        health.TakeDamage(damage);
+
+        // the collider tells EnemyHealth which part was hit, such as a weak point
+        health.TakeDamage(damage, collision.collider);
     }
 }
