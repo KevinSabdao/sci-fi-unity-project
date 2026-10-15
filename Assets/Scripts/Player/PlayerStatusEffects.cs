@@ -9,18 +9,21 @@ public class PlayerStatusEffects : MonoBehaviour
     [Serializable]
     public class InfectionSettings
     {
-        // health lost on each tick
-        public float damagePerTick = 1f;
+        // max health lost on each tick, current health only drops once it is at max
+        public float maxHealthLossPerTick = 1f;
 
         // seconds between ticks
-        public float tickInterval = 2f;
+        public float lossInterval = 10f;
 
-        // seconds before it wears off, a new infection restarts it
-        public float duration = 60f;
-
-        // stops draining at this share of max health and cures itself
+        // max health stops dropping at this share of the original
         [Range(0f, 100f)]
-        public float healthFloorPercent = 30f;
+        public float maxHealthFloorPercent = 50f;
+
+        // health the vaccine gives back on each tick, until all the infection took is back
+        public float vaccineHealPerTick = 1f;
+
+        // seconds between vaccine ticks
+        public float vaccineHealInterval = 2f;
 
         // PlayerScreenEffects entry shown while infected
         public ScreenEffect screenEffect = ScreenEffect.Infected;
@@ -33,15 +36,34 @@ public class PlayerStatusEffects : MonoBehaviour
     // optional, without it infection has no screen effect
     PlayerScreenEffects screenEffects;
 
-    float infectedUntil;
-    float nextTickTime;
+    float nextLossTime;
 
+    // current health taken by this infection, the vaccine gives it back
+    float healthTaken;
+
+    // health the vaccine still has to give back
+    float vaccineHealLeft;
+    float nextVaccineHealTime;
+
+    // lasts until max health hits the floor, the vaccine or a respawn
     public bool IsInfected { get; private set; }
+
+    // infection reached the floor and ended, max health stays low and no new infection takes until the vaccine
+    public bool IsInfectionBurnedOut { get; private set; }
+
+    // no new infection while the vaccine is still giving health back
+    public bool IsImmune => vaccineHealLeft > 0f;
+
+    // for the HUD countdown
+    public float SecondsToNextLoss => Mathf.Max(nextLossTime - Time.time, 0f);
 
     // raised with true when infection starts, false when it ends
     public event Action<bool> InfectionChanged;
 
-    float HealthFloor => health.Max * infection.healthFloorPercent / 100f;
+    // raised when the vaccine cures, for the HUD message
+    public event Action Vaccinated;
+
+    float MaxHealthFloor => health.BaseMax * infection.maxHealthFloorPercent / 100f;
 
     void Awake()
     {
@@ -51,35 +73,29 @@ public class PlayerStatusEffects : MonoBehaviour
 
     void OnEnable()
     {
-        // any heal cures, and so does respawning
-        health.Healed += Cure;
         health.OnRespawned?.AddListener(Cure);
     }
 
     void OnDisable()
     {
-        health.Healed -= Cure;
         health.OnRespawned?.RemoveListener(Cure);
 
         Cure();
     }
 
+    [ContextMenu("Infect")]
     public void Infect()
     {
         if (!health.IsAlive)
             return;
 
-        // already at the floor, it would cure on the first tick
-        if (health.Current <= HealthFloor)
-            return;
-
-        infectedUntil = Time.time + infection.duration;
-
-        if (IsInfected)
+        // a new infection on top of one, after one burned out or while immune does nothing
+        if (IsInfected || IsInfectionBurnedOut || IsImmune)
             return;
 
         IsInfected = true;
-        nextTickTime = Time.time + infection.tickInterval;
+        healthTaken = 0f;
+        nextLossTime = Time.time + infection.lossInterval;
 
         if (screenEffects != null)
             screenEffects.SetActive(infection.screenEffect, true);
@@ -87,7 +103,43 @@ public class PlayerStatusEffects : MonoBehaviour
         InfectionChanged?.Invoke(true);
     }
 
+    // the only cure, gives max health back at once and what the infection took from health slowly
+    // false when not infected or burned out, so a vaccine item is not used up
+    public bool Vaccinate()
+    {
+        if (!IsInfected && !IsInfectionBurnedOut)
+            return false;
+
+        float taken = healthTaken;
+
+        Cure();
+
+        vaccineHealLeft = taken;
+        nextVaccineHealTime = Time.time + infection.vaccineHealInterval;
+
+        Vaccinated?.Invoke();
+
+        return true;
+    }
+
+    // ends the infection and gives max health back, health taken stays lost
     public void Cure()
+    {
+        vaccineHealLeft = 0f;
+
+        if (!IsInfected && !IsInfectionBurnedOut)
+            return;
+
+        IsInfectionBurnedOut = false;
+        healthTaken = 0f;
+
+        health.RestoreMax();
+
+        EndInfection();
+    }
+
+    // stops the losses and hides the infection, max health stays where it is
+    void EndInfection()
     {
         if (!IsInfected)
             return;
@@ -100,29 +152,51 @@ public class PlayerStatusEffects : MonoBehaviour
         InfectionChanged?.Invoke(false);
     }
 
+    // inspector menu entry, for testing without a vaccine item
+    [ContextMenu("Vaccinate")]
+    void VaccinateFromMenu() => Vaccinate();
+
     void Update()
     {
-        if (!IsInfected)
-            return;
+        if (IsInfected && Time.time >= nextLossTime)
+            InfectionTick();
 
-        if (Time.time >= infectedUntil)
+        if (vaccineHealLeft > 0f && Time.time >= nextVaccineHealTime)
+            VaccineTick();
+    }
+
+    void InfectionTick()
+    {
+        nextLossTime += infection.lossInterval;
+
+        // never takes max health below the floor
+        float amount = Mathf.Min(infection.maxHealthLossPerTick, health.Max - MaxHealthFloor);
+
+        if (amount > 0.001f)
         {
-            Cure();
-            return;
+            // current health only drops when the new max cuts it down
+            float before = health.Current;
+
+            health.ReduceMax(amount);
+
+            healthTaken += before - health.Current;
         }
 
-        if (Time.time < nextTickTime)
-            return;
+        // at the floor it burns out, the vaccine still gives everything back
+        if (health.Max <= MaxHealthFloor + 0.001f)
+        {
+            IsInfectionBurnedOut = true;
+            EndInfection();
+        }
+    }
 
-        nextTickTime += infection.tickInterval;
+    void VaccineTick()
+    {
+        nextVaccineHealTime += infection.vaccineHealInterval;
 
-        // never drains past the floor
-        float amount = Mathf.Min(infection.damagePerTick, health.Current - HealthFloor);
+        float amount = Mathf.Min(infection.vaccineHealPerTick, vaccineHealLeft);
 
-        if (amount > 0f)
-            health.Drain(amount);
-
-        if (health.Current <= HealthFloor + 0.001f)
-            Cure();
+        vaccineHealLeft -= amount;
+        health.Heal(amount);
     }
 }

@@ -23,9 +23,15 @@ public class PlayerHealth : MonoBehaviour
     // raised by any heal above zero, even at full health
     public event Action Healed;
 
+    // max health taken by effects such as infection, RestoreMax gives it back
+    float maxHealthLoss;
+
     public float Current { get; private set; }
-    public float Max => maxHealth;
+    public float Max => maxHealth - maxHealthLoss;
     public bool IsAlive => Current > 0f;
+
+    // max health with nothing taken away
+    public float BaseMax => maxHealth;
 
     CharacterController controller;
     Vector3 startPosition;
@@ -62,9 +68,25 @@ public class PlayerHealth : MonoBehaviour
         if (amount <= 0f)
             return;
 
-        Current = Mathf.Min(Current + amount, maxHealth);
+        Current = Mathf.Min(Current + amount, Max);
 
         Healed?.Invoke();
+    }
+
+    // lowers max health, never below 1, current health above it is cut down
+    public void ReduceMax(float amount)
+    {
+        if (amount <= 0f)
+            return;
+
+        maxHealthLoss = Mathf.Min(maxHealthLoss + amount, maxHealth - 1f);
+        Current = Mathf.Min(Current, Max);
+    }
+
+    // gives back all max health taken by ReduceMax, current health stays the same
+    public void RestoreMax()
+    {
+        maxHealthLoss = 0f;
     }
 
     // health lost to status effects, skips OnDamaged so hit feedback only
@@ -96,6 +118,7 @@ public class PlayerHealth : MonoBehaviour
         if (controller != null)
             controller.enabled = true;
 
+        maxHealthLoss = 0f;
         Current = maxHealth;
 
         OnRespawned?.Invoke();

@@ -1436,6 +1436,7 @@ GameObject:
   - component: {fileID: 1117826125324445371}
   - component: {fileID: 6825596419356192642}
   - component: {fileID: 1514169863772831786}
+  - component: {fileID: 5459278541065908633}
   m_Layer: 7
   m_Name: Zombie_Spitter
   m_TagString: Untagged
@@ -1771,6 +1772,21 @@ MonoBehaviour:
   infectionChancePercent: 5
   missesBeforeInfectionMin: 4
   missesBeforeInfectionMax: 6
+--- !u!114 &5459278541065908633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5329083224304777551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 625e57c0fa463e34ca7e80e9e7d61db7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scripts::EnemyDrop
+  dropPrefab: {fileID: 5313692884285467394, guid: cdbfb865afc54e3478195bb07e422a90, type: 3}
+  dropChancePercent: 100
+  dropHeight: 0.5
 --- !u!1 &5876603863631183384
 GameObject:
   m_ObjectHideFlags: 0
