@@ -288,6 +288,7 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = item.description;
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
         itemDescriptionImage.enabled = true;
+        itemDescriptionImage.preserveAspect = true;
     }
 
     public static void AddKey(string name, int count)

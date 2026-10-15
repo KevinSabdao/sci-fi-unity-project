@@ -43,7 +43,7 @@ public class MeleeWeapon : Weapon
         float zRotation;
         if (hit.transform?.gameObject.GetComponentInParent<EnemyHealth>())
         {
-            zRotation = 90 - (Mathf.Atan2(hit.distance, transform.parent.transform.localPosition.z) * 180 / Mathf.PI);
+            zRotation = 90 - (Mathf.Atan2(hit.distance, -transform.parent.transform.localPosition.x) * 180 / Mathf.PI);
         }
         else
         {
@@ -53,7 +53,7 @@ public class MeleeWeapon : Weapon
         StartCoroutine(AnimateAttack(rotateTo, rotateFrom));
 
         // Hit the enemy if it is within range
-        if (hit.transform && hit.distance <= range) HitEnemy(hit.transform?.gameObject);
+        if (hit.transform && hit.distance <= range) StartCoroutine(HitEnemy(hit.transform?.gameObject));
 
         // Check if the attack has finished
         if (allowReset)
@@ -63,11 +63,14 @@ public class MeleeWeapon : Weapon
         }
     }
 
-    private void HitEnemy(GameObject enemy)
+    private IEnumerator HitEnemy(GameObject enemy)
     {
         // Get the enemy that was hit
         EnemyHealth enemyHealth = enemy.GetComponentInParent<EnemyHealth>();
-        if (!enemyHealth) return;
+        if (!enemyHealth) yield break;
+
+        // Hit when the sword collides
+        yield return new WaitForSeconds((attackingDelay / 2));
 
         // If an enemy has definitely been hit
         enemyHealth.TakeDamage(CalculateDamage());

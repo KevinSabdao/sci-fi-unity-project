@@ -71,6 +71,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
             // Store the item's image for later use
             this.image.sprite = this.itemItem.inventoryIcon;
             this.image.enabled = true;
+            this.image.preserveAspect = true;
         }
         else
         {

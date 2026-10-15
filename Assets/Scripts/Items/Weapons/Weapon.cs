@@ -21,6 +21,7 @@ public abstract class Weapon : Item
     {
         durability = durabilityMax;
         readyToAttack = true;
+        if (!playerCamera) playerCamera = Camera.main;
     }
 
     protected bool CanUseWeapon()
