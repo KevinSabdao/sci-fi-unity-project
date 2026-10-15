@@ -41,6 +41,11 @@ public class PlayerHealth : MonoBehaviour
         Current = maxHealth;
         startPosition = transform.position;
         controller = GetComponent<CharacterController>();
+
+        // added for the unit tests: a player built from code has these empty. a scene or prefab fills them in
+        // without them PlayerStatusEffects never hears about a respawn or a hit
+        OnDamaged ??= new UnityEvent();
+        OnRespawned ??= new UnityEvent();
     }
 
     public void TakeDamage(float amount)

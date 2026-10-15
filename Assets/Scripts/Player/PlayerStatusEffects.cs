@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-// timed effects on the player, infection for now
+// timed effects on the player: infection and deep wound
 // each effect gets its own settings class and section in the inspector
 [RequireComponent(typeof(PlayerHealth))]
 public class PlayerStatusEffects : MonoBehaviour
@@ -31,10 +31,50 @@ public class PlayerStatusEffects : MonoBehaviour
 
     [SerializeField] InfectionSettings infection = new InfectionSettings();
 
+    // the HUD shows health draining over the timer but nothing is lost unless it runs out
+    // holding the mend key cures it with no loss
+    [Serializable]
+    public class DeepWoundSettings
+    {
+        // share of max health lost when the timer runs out, locked in when the wound is dealt
+        [Range(0f, 100f)]
+        public float lossPercent = 30f;
+
+        // seconds to mend before the loss is real
+        public float duration = 15f;
+
+        // seconds the key has to be held in total. letting go keeps the progress
+        public float mendTime = 4f;
+
+        // seconds without mending before the progress starts to drop
+        public float mendDecayDelay = 2f;
+
+        // seconds of progress lost per second once it drops
+        public float mendDecayPerSecond = 1f;
+
+        public KeyCode mendKey = KeyCode.X;
+
+        // how far the camera sinks while mending, in metres
+        public float mendCameraDip = 0.25f;
+
+        // PlayerScreenEffects entry shown while wounded
+        public ScreenEffect screenEffect = ScreenEffect.DeepWound;
+    }
+
+    [SerializeField] DeepWoundSettings deepWound = new DeepWoundSettings();
+
     PlayerHealth health;
 
     // optional, without it infection has no screen effect
     PlayerScreenEffects screenEffects;
+
+    // optional, holds the player still while mending
+    FirstPersonMovement movement;
+
+    // optional, sinks while mending
+    Transform cameraTransform;
+    Vector3 cameraRestPosition;
+    float cameraDip;
 
     float nextLossTime;
 
@@ -63,24 +103,76 @@ public class PlayerStatusEffects : MonoBehaviour
     // raised when the vaccine cures, for the HUD message
     public event Action Vaccinated;
 
+    // health the deep wound takes if the timer runs out
+    float deepWoundLoss;
+    float deepWoundTimeLeft;
+    float mendProgress;
+
+    // a hit stops the mend until the key is pressed again
+    bool mendBlocked;
+
+    float lastMendTime;
+
+    public bool IsDeepWounded { get; private set; }
+
+    // the mend key is held and counting
+    public bool IsMending { get; private set; }
+
+    public float DeepWoundSecondsLeft => IsDeepWounded ? Mathf.Max(deepWoundTimeLeft, 0f) : 0f;
+
+    // 0 to 1, for the mend circle
+    public float MendFraction => deepWound.mendTime > 0f ? Mathf.Clamp01(mendProgress / deepWound.mendTime) : 0f;
+
+    public KeyCode MendKey => deepWound.mendKey;
+
+    // the part of the loss the HUD shows as already gone, it grows as the timer runs
+    public float DeepWoundShownLoss =>
+        IsDeepWounded && deepWound.duration > 0f
+            ? deepWoundLoss * (1f - deepWoundTimeLeft / deepWound.duration)
+            : 0f;
+
+    // raised with true when a deep wound starts, false when it ends either way
+    public event Action<bool> DeepWoundChanged;
+
+    // raised when the wound is mended in time, for the HUD message
+    public event Action DeepWoundMended;
+
     float MaxHealthFloor => health.BaseMax * infection.maxHealthFloorPercent / 100f;
 
     void Awake()
     {
         health = GetComponent<PlayerHealth>();
         screenEffects = GetComponent<PlayerScreenEffects>();
+        movement = GetComponent<FirstPersonMovement>();
+
+        Camera playerCamera = GetComponentInChildren<Camera>();
+
+        if (playerCamera != null)
+        {
+            cameraTransform = playerCamera.transform;
+            cameraRestPosition = cameraTransform.localPosition;
+        }
     }
 
     void OnEnable()
     {
-        health.OnRespawned?.AddListener(Cure);
+        health.OnRespawned?.AddListener(CureAll);
+        health.OnDamaged?.AddListener(InterruptMend);
     }
 
     void OnDisable()
     {
-        health.OnRespawned?.RemoveListener(Cure);
+        health.OnRespawned?.RemoveListener(CureAll);
+        health.OnDamaged?.RemoveListener(InterruptMend);
 
+        CureAll();
+    }
+
+    // every effect at once, such as on respawn
+    public void CureAll()
+    {
         Cure();
+        EndDeepWound();
     }
 
     [ContextMenu("Infect")]
@@ -156,6 +248,42 @@ public class PlayerStatusEffects : MonoBehaviour
     [ContextMenu("Vaccinate")]
     void VaccinateFromMenu() => Vaccinate();
 
+    // a second wound on top of one does nothing
+    [ContextMenu("Deep Wound")]
+    public void ApplyDeepWound()
+    {
+        if (!health.IsAlive || IsDeepWounded)
+            return;
+
+        IsDeepWounded = true;
+        deepWoundLoss = health.Max * deepWound.lossPercent / 100f;
+        deepWoundTimeLeft = deepWound.duration;
+        mendProgress = 0f;
+        mendBlocked = false;
+
+        if (screenEffects != null)
+            screenEffects.SetActive(deepWound.screenEffect, true);
+
+        DeepWoundChanged?.Invoke(true);
+    }
+
+    // ends the wound with no loss
+    void EndDeepWound()
+    {
+        StopMending();
+
+        if (!IsDeepWounded)
+            return;
+
+        IsDeepWounded = false;
+        deepWoundLoss = 0f;
+
+        if (screenEffects != null)
+            screenEffects.SetActive(deepWound.screenEffect, false);
+
+        DeepWoundChanged?.Invoke(false);
+    }
+
     void Update()
     {
         if (IsInfected && Time.time >= nextLossTime)
@@ -163,6 +291,106 @@ public class PlayerStatusEffects : MonoBehaviour
 
         if (vaccineHealLeft > 0f && Time.time >= nextVaccineHealTime)
             VaccineTick();
+
+        if (IsDeepWounded)
+            UpdateDeepWound();
+    }
+
+    void UpdateDeepWound()
+    {
+        bool held = Input.GetKey(deepWound.mendKey) && !FirstPersonLook.UiHasCursor;
+
+        // letting go after a hit lets the next press mend again
+        if (!held)
+            mendBlocked = false;
+
+        if (held && !mendBlocked)
+            StartMending();
+        else
+            StopMending();
+
+        // the timer stops while mending
+        if (IsMending)
+        {
+            mendProgress += Time.deltaTime;
+            lastMendTime = Time.time;
+
+            if (mendProgress >= deepWound.mendTime)
+            {
+                EndDeepWound();
+                DeepWoundMended?.Invoke();
+            }
+
+            return;
+        }
+
+        // progress left alone too long starts to slip away
+        if (Time.time > lastMendTime + deepWound.mendDecayDelay)
+            mendProgress = Mathf.Max(mendProgress - deepWound.mendDecayPerSecond * Time.deltaTime, 0f);
+
+        deepWoundTimeLeft -= Time.deltaTime;
+
+        if (deepWoundTimeLeft > 0f)
+            return;
+
+        // the timer ran out. the loss is real and can kill
+        float loss = deepWoundLoss;
+
+        EndDeepWound();
+        health.Drain(loss);
+    }
+
+    void StartMending()
+    {
+        if (IsMending)
+            return;
+
+        IsMending = true;
+
+        // standing still while mending
+        if (movement != null)
+            movement.SetSpeedModifier(this, 0f);
+
+        // hands busy: the weapons are put away and cannot fire, the same lock the zombie grab uses
+        PlayerHands.Lock();
+    }
+
+    void StopMending()
+    {
+        if (!IsMending)
+            return;
+
+        IsMending = false;
+
+        if (movement != null)
+            movement.RemoveSpeedModifier(this);
+
+        PlayerHands.Unlock();
+    }
+
+    // a hit while mending stops it. the progress is kept
+    void InterruptMend()
+    {
+        if (!IsMending)
+            return;
+
+        mendBlocked = true;
+        StopMending();
+    }
+
+    // after the look script, the camera sinks while mending and comes back after
+    void LateUpdate()
+    {
+        if (cameraTransform == null)
+            return;
+
+        float wanted = IsMending ? deepWound.mendCameraDip : 0f;
+
+        if (Mathf.Approximately(cameraDip, wanted) && wanted == 0f)
+            return;
+
+        cameraDip = Mathf.MoveTowards(cameraDip, wanted, Time.deltaTime);
+        cameraTransform.localPosition = cameraRestPosition + Vector3.down * cameraDip;
     }
 
     void InfectionTick()
@@ -182,7 +410,7 @@ public class PlayerStatusEffects : MonoBehaviour
             healthTaken += before - health.Current;
         }
 
-        // at the floor it burns out, the vaccine still gives everything back
+        // at the floor it burns out. the vaccine still gives everything back
         if (health.Max <= MaxHealthFloor + 0.001f)
         {
             IsInfectionBurnedOut = true;

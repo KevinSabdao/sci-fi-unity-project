@@ -35,6 +35,9 @@ public class FirstPersonMovement : MonoBehaviour
     // product of every status speed modifier, 1 with none
     public float StatusSpeedMultiplier { get; private set; } = 1f;
 
+    // a status effect holds the player still, such as mending a wound. no sprinting and no jumping
+    public bool IsRooted => StatusSpeedMultiplier <= 0f;
+
     // one entry per source, such as 0.6 for a slow, so effects never overwrite each other
     readonly Dictionary<object, float> speedModifiers = new Dictionary<object, float>();
 
@@ -184,7 +187,7 @@ public class FirstPersonMovement : MonoBehaviour
         Vector3 worldDirection = transform.TransformVector(localDirection);
 
         bool moving = localDirection.sqrMagnitude > 0f;
-        IsSprinting = moving && SpeedMultiplier > 1f;
+        IsSprinting = moving && SpeedMultiplier > 1f && !IsRooted;
 
         float targetSpeed = walkSpeed * SpeedMultiplier * StatusSpeedMultiplier;
 
@@ -207,7 +210,7 @@ public class FirstPersonMovement : MonoBehaviour
         Vector3 target = ProjectOntoGroundPlane(worldDirection) * targetSpeed;
         Vector3 velocity = Vector3.Lerp(Velocity, target, groundAcceleration * Time.deltaTime);
 
-        if (pendingJumpSpeed > 0f)
+        if (pendingJumpSpeed > 0f && !IsRooted)
         {
             velocity = new Vector3(velocity.x, pendingJumpSpeed, velocity.z);
             lastJumpTime = Time.time;

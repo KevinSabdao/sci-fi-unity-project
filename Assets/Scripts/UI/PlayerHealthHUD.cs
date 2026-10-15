@@ -19,6 +19,14 @@ public class PlayerHealthHUD : MonoBehaviour
     [Header("Infected")]
     [SerializeField] Color infectedColor = new Color(0.35f, 0.75f, 0f, 1f);
 
+    [Header("Deep Wound")]
+    [SerializeField] Color deepWoundColor = new Color(0.85f, 0.1f, 0.1f, 1f);
+
+    // the health number while the wound drains it on screen
+    [SerializeField] Color drainingHealthColor = new Color(1f, 0.45f, 0.45f, 1f);
+
+    [SerializeField] Color mendedColor = new Color(1f, 1f, 1f, 1f);
+
     [Header("Messages")]
     // seconds a message stays, it fades out over the last half second
     [SerializeField] float messageDuration = 3f;
@@ -32,6 +40,11 @@ public class PlayerHealthHUD : MonoBehaviour
     const string InfectionWidestText = "INFECTION - 00s";
 
     const string CuredText = "INFECTION CURED";
+
+    const string DeepWoundText = "DEEP WOUND";
+    const string DeepWoundWidestText = "DEEP WOUND - 00s";
+    const string MendedText = "WOUND MENDED";
+
     const float MessageFadeTime = 0.5f;
 
     // one line of text above the health
@@ -74,14 +87,20 @@ public class PlayerHealthHUD : MonoBehaviour
 
     void OnEnable()
     {
-        if (status != null)
-            status.Vaccinated += ShowCuredMessage;
+        if (status == null)
+            return;
+
+        status.Vaccinated += ShowCuredMessage;
+        status.DeepWoundMended += ShowMendedMessage;
     }
 
     void OnDisable()
     {
-        if (status != null)
-            status.Vaccinated -= ShowCuredMessage;
+        if (status == null)
+            return;
+
+        status.Vaccinated -= ShowCuredMessage;
+        status.DeepWoundMended -= ShowMendedMessage;
     }
 
     // short message on its own line, the same text again restarts its timer
@@ -104,6 +123,8 @@ public class PlayerHealthHUD : MonoBehaviour
 
     void ShowCuredMessage() => ShowMessage(CuredText, curedColor);
 
+    void ShowMendedMessage() => ShowMessage(MendedText, mendedColor);
+
     void OnGUI()
     {
         if (health == null)
@@ -112,7 +133,11 @@ public class PlayerHealthHUD : MonoBehaviour
         EnsureStyle();
         BuildLines();
 
-        string text = $"{health.Current:0}/{health.Max:0}";
+        // a deep wound drains the number on screen. the real health only drops if its timer runs out
+        bool draining = status != null && status.IsDeepWounded;
+        float shownHealth = Mathf.Max(health.Current - (status != null ? status.DeepWoundShownLoss : 0f), 0f);
+
+        string text = $"{shownHealth:0}/{health.Max:0}";
 
         float lineHeight = fontSize * 1.2f;
         int lineCount = 1 + lines.Count;
@@ -137,7 +162,11 @@ public class PlayerHealthHUD : MonoBehaviour
                                   background.yMax - padding - lineHeight,
                                   textWidth, lineHeight);
 
+        if (draining)
+            GUI.color = drainingHealthColor;
+
         GUI.Label(healthArea, text, style);
+        GUI.color = previous;
 
         // same font and alignment as the health, stacked upwards
         for (int i = 0; i < lines.Count; i++)
@@ -154,6 +183,17 @@ public class PlayerHealthHUD : MonoBehaviour
     void BuildLines()
     {
         lines.Clear();
+
+        if (status != null && status.IsDeepWounded)
+        {
+            // counts down to the moment the loss becomes real
+            lines.Add(new Line
+            {
+                text = $"{DeepWoundText} - {Mathf.CeilToInt(status.DeepWoundSecondsLeft)}s",
+                widestText = DeepWoundWidestText,
+                color = deepWoundColor,
+            });
+        }
 
         if (status != null && status.IsInfected)
         {

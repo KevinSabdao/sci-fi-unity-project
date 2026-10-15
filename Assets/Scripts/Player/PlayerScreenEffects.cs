@@ -7,7 +7,8 @@ public enum ScreenEffect
 {
     Grab,
     Infect,
-    Infected
+    Infected,
+    DeepWound
 }
 
 // screen tint, screen border and camera shake on the player
@@ -34,6 +35,9 @@ public class PlayerScreenEffects : MonoBehaviour
         // a tint hides any border while it is active
         public Style style = Style.Tint;
 
+        // with several effects of the same style active, the highest shows. a tie goes to the most recent
+        public int priority;
+
         [Header("Color")]
         public Color tintColor = new Color(0.7f, 0f, 0f, 1f);
 
@@ -53,6 +57,17 @@ public class PlayerScreenEffects : MonoBehaviour
 
         // shakes per second
         public float shakeRate = 8f;
+
+        [Header("Overlay")]
+        // drawn in the four screen corners on top of the tint or border, such as blood. empty for none
+        public Texture2D overlay;
+
+        // height of each corner image as a share of the screen height
+        [Range(0.1f, 1f)]
+        public float overlaySize = 0.45f;
+
+        [Range(0f, 1f)]
+        public float overlayAlpha = 0.8f;
     }
 
     [SerializeField] Profile[] profiles =
@@ -75,6 +90,18 @@ public class PlayerScreenEffects : MonoBehaviour
             maxAlpha = 0.6f,
             pulseSpeed = 0.5f,
             shakeAmount = 0f
+        },
+        new Profile
+        {
+            effect = ScreenEffect.DeepWound,
+            style = Style.Border,
+            // shows over the infection border
+            priority = 1,
+            tintColor = new Color(0.08f, 0f, 0f, 1f),
+            maxAlpha = 0.85f,
+            pulseSpeed = 0.8f,
+            borderWidth = 0.4f,
+            shakeAmount = 0f
         }
     };
 
@@ -84,7 +111,7 @@ public class PlayerScreenEffects : MonoBehaviour
 
     Transform cameraTransform;
 
-    // active effects, the most recent of each style is the one shown
+    // active effects. the one shown per style is picked by priority, then by the most recent
     readonly List<ScreenEffect> active = new List<ScreenEffect>();
 
     // one border texture per width, built on first use
@@ -181,7 +208,7 @@ public class PlayerScreenEffects : MonoBehaviour
     {
         Profile tint = Latest(p => p.style == Style.Tint);
 
-        // a tint takes over the screen, borders come back once it ends
+        // a tint such as the zombie grab takes over the screen. borders and overlays come back once it ends
         if (tint != null)
         {
             Draw(tint, Texture2D.whiteTexture);
@@ -192,13 +219,16 @@ public class PlayerScreenEffects : MonoBehaviour
 
         if (border != null)
             Draw(border, BorderTexture(border.borderWidth));
+
+        Profile overlay = Latest(p => p.overlay != null);
+
+        if (overlay != null)
+            DrawOverlay(overlay);
     }
 
     void Draw(Profile profile, Texture2D texture)
     {
-        // sine wave gives a heartbeat
-        float pulse = (Mathf.Sin(Time.time * profile.pulseSpeed * Mathf.PI) + 1f) * 0.5f;
-        float alpha = Mathf.Lerp(profile.maxAlpha * 0.4f, profile.maxAlpha, pulse);
+        float alpha = profile.maxAlpha * Pulse(profile);
 
         Color previous = GUI.color;
         GUI.color = new Color(profile.tintColor.r, profile.tintColor.g, profile.tintColor.b, alpha);
@@ -206,6 +236,39 @@ public class PlayerScreenEffects : MonoBehaviour
         GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), texture);
 
         GUI.color = previous;
+    }
+
+    // the overlay image in each corner, mirrored so they all point inwards and pushed a quarter off screen
+    void DrawOverlay(Profile profile)
+    {
+        float height = Screen.height * profile.overlaySize;
+        float width = height * profile.overlay.width / profile.overlay.height;
+
+        Color previous = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, profile.overlayAlpha * Pulse(profile));
+
+        for (int corner = 0; corner < 4; corner++)
+        {
+            bool right = corner % 2 == 1;
+            bool bottom = corner >= 2;
+
+            float x = right ? Screen.width - width * 0.75f : -width * 0.25f;
+            float y = bottom ? Screen.height - height * 0.75f : -height * 0.25f;
+
+            // negative sizes in the texture coordinates mirror the image
+            var coords = new Rect(right ? 1f : 0f, bottom ? 1f : 0f, right ? -1f : 1f, bottom ? -1f : 1f);
+
+            GUI.DrawTextureWithTexCoords(new Rect(x, y, width, height), profile.overlay, coords);
+        }
+
+        GUI.color = previous;
+    }
+
+    // sine wave gives a heartbeat, 0.4 to 1
+    static float Pulse(Profile profile)
+    {
+        float wave = (Mathf.Sin(Time.time * profile.pulseSpeed * Mathf.PI) + 1f) * 0.5f;
+        return Mathf.Lerp(0.4f, 1f, wave);
     }
 
     // white at the edges fading to clear towards the centre, tinted when drawn
@@ -242,18 +305,24 @@ public class PlayerScreenEffects : MonoBehaviour
         return texture;
     }
 
-    // profile of the most recent active effect that matches, null when none
+    // profile of the highest priority active effect that matches, the most recent on a tie. null when none
     Profile Latest(System.Predicate<Profile> match)
     {
+        Profile best = null;
+
+        // newest first, so a later one only wins with a higher priority
         for (int i = active.Count - 1; i >= 0; i--)
         {
             foreach (Profile profile in profiles)
             {
-                if (profile.effect == active[i] && match(profile))
-                    return profile;
+                if (profile.effect != active[i] || !match(profile))
+                    continue;
+
+                if (best == null || profile.priority > best.priority)
+                    best = profile;
             }
         }
 
-        return null;
+        return best;
     }
 }

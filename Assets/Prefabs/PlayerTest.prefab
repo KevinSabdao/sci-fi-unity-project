@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 6939322889416719981}
   - component: {fileID: 3918812214010979772}
   - component: {fileID: 1314106146688338281}
+  - component: {fileID: 4021000289623114128}
   m_Layer: 6
   m_Name: PlayerTest
   m_TagString: Player
@@ -155,6 +156,9 @@ MonoBehaviour:
   backgroundColor: {r: 0, g: 0, b: 0, a: 0.55}
   padding: 12
   infectedColor: {r: 0.35, g: 0.75, b: 0, a: 1}
+  deepWoundColor: {r: 0.85, g: 0.1, b: 0.1, a: 1}
+  drainingHealthColor: {r: 1, g: 0.45, b: 0.45, a: 1}
+  mendedColor: {r: 1, g: 1, b: 1, a: 1}
   messageDuration: 3
   curedColor: {r: 0.2, g: 0.8, b: 1, a: 1}
 --- !u!114 &2189518291206793028
@@ -173,30 +177,55 @@ MonoBehaviour:
   - name: Grab (Tint)
     effect: 0
     style: 0
+    priority: 0
     tintColor: {r: 0.7, g: 0, b: 0, a: 1}
     maxAlpha: 0.35
     pulseSpeed: 3
     borderWidth: 0.15
     shakeAmount: 6
     shakeRate: 8
+    overlay: {fileID: 0}
+    overlaySize: 0.45
+    overlayAlpha: 0.8
   - name: Infect (Tint)
     effect: 1
     style: 0
+    priority: 0
     tintColor: {r: 0.35, g: 0.75, b: 0, a: 1}
     maxAlpha: 0.35
     pulseSpeed: 3
     borderWidth: 0.15
     shakeAmount: 6
     shakeRate: 8
+    overlay: {fileID: 0}
+    overlaySize: 0.45
+    overlayAlpha: 0.8
   - name: Infected (Border)
     effect: 2
     style: 1
+    priority: 0
     tintColor: {r: 0.35, g: 0.75, b: 0, a: 1}
     maxAlpha: 0.35
     pulseSpeed: 0.5
     borderWidth: 0.08
     shakeAmount: 0
     shakeRate: 8
+    overlay: {fileID: 0}
+    overlaySize: 0.45
+    overlayAlpha: 0.8
+  - name: DeepWound (Border)
+    effect: 3
+    style: 1
+    priority: 1
+    tintColor: {r: 0.08, g: 0, b: 0, a: 1}
+    maxAlpha: 0.85
+    pulseSpeed: 0.8
+    borderWidth: 0.4
+    shakeAmount: 0
+    shakeRate: 8
+    overlay: {fileID: 2800000, guid: 1fa879381554fbb4282865f109f4200f, type: 3}
+    overlaySize: 0.45
+    overlayAlpha: 0.8
   returnSpeed: 5
 --- !u!114 &6672148880406897036
 MonoBehaviour:
@@ -217,6 +246,15 @@ MonoBehaviour:
     vaccineHealPerTick: 1
     vaccineHealInterval: 2
     screenEffect: 2
+  deepWound:
+    lossPercent: 30
+    duration: 15
+    mendTime: 4
+    mendDecayDelay: 2
+    mendDecayPerSecond: 1
+    mendKey: 120
+    mendCameraDip: 0.25
+    screenEffect: 3
 --- !u!114 &6939322889416719981
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -275,6 +313,27 @@ MonoBehaviour:
   onlyWhileFiring: 1
   lingerTime: 3
   fadeTime: 0.3
+--- !u!114 &4021000289623114128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4465681360850246474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d91be0ae0e58634fa7a414bb35956ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Scripts::PlayerMendPrompt
+  fontSize: 34
+  offsetBelowCentre: 110
+  ringRadius: 32
+  ringDots: 32
+  dotSize: 6
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  filledColor: {r: 1, g: 1, b: 1, a: 1}
+  emptyColor: {r: 1, g: 1, b: 1, a: 0.25}
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.7}
 --- !u!1 &7510996172379370702
 GameObject:
   m_ObjectHideFlags: 0
