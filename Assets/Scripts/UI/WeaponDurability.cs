@@ -4,16 +4,17 @@ using UnityEngine.UI;
 public class WeaponDurability : MonoBehaviour
 {
 
-    [SerializeField] GameObject leftArm;
-    [SerializeField] GameObject rightArm;
+    
     [SerializeField] Image leftDurabilityBackground;
     [SerializeField] Image rightDurabilityBackground;
 
     void Update()
     {
-        if (leftArm.transform.childCount > 0)
+        GameObject leftArm = Inventory.Instance.LeftArm;
+        GameObject rightArm = Inventory.Instance.RightArm;
+        if (leftArm != null)
         {
-            Weapon leftWeapon = leftArm.transform.GetChild(0).GetComponent<Weapon>();
+            Weapon leftWeapon = leftArm.GetComponent<Weapon>();
             if (leftWeapon != null)
             {
                 leftDurabilityBackground.gameObject.SetActive(true);
@@ -34,9 +35,9 @@ public class WeaponDurability : MonoBehaviour
 
 
         }
-        if (rightArm.transform.childCount > 0)
+        if (rightArm != null)
         {
-            Weapon rightWeapon = rightArm.transform.GetChild(0).GetComponent<Weapon>();
+            Weapon rightWeapon = rightArm.GetComponent<Weapon>();
             if (rightWeapon != null)
             {
                 rightDurabilityBackground.gameObject.SetActive(true);
