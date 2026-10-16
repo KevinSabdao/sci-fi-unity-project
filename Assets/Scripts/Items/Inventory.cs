@@ -16,9 +16,12 @@ public class Inventory : MonoBehaviour
     private List<GameObject> startingItems;
     [SerializeField]
     private int maxStorageSlots; // Maximum the UI can handle is 15 :/
+    [SerializeField]
+    private int maxExternalSlots; // Maximum the UI can handle is 20 :/
 
     // Inventory physical objects
     private List<GameObject> ArmObjects;
+    private List<GameObject> itemStorages;
     private GameObject inactiveItems;
     private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
     private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
@@ -27,6 +30,7 @@ public class Inventory : MonoBehaviour
     // Inventory internal item slots
     private List<ItemSlot> itemSlotsActive;
     private List<ItemSlot> itemSlotsInactive;
+    private List<ItemSlot> itemSlotsExternal;
 
     // Inventory UI
     private GameObject InventoryUI;
@@ -34,6 +38,7 @@ public class Inventory : MonoBehaviour
     private GameObject ItemSlotPrefab;
     private GameObject ArmSlots;
     private GameObject StorageSlots;
+    private GameObject ExternalSlots;
 
     public static List<Keys> keyList = new List<Keys>();
     public static int keyCounter = 0;
@@ -53,6 +58,11 @@ public class Inventory : MonoBehaviour
     [SerializeField]
     private KeyCode useRightArm;
 
+    // DEBUGGING STUFF
+    [SerializeField]
+    private KeyCode debugSwitchStorage;
+    public int displayExternal;
+
     
     private void Awake()
     {
@@ -66,15 +76,23 @@ public class Inventory : MonoBehaviour
             Instance = this;
         }
 
-        // Set internal inventory parameters
+        // Set correct inventory item slots
         this.ArmSlots = GameObject.Find("ArmSlots");
+        this.itemSlotsActive = new List<ItemSlot>();
         this.StorageSlots = GameObject.Find("StorageSlots");
+        this.itemSlotsInactive = new List<ItemSlot>();
+        this.ExternalSlots = GameObject.Find("ExternalSlots");
+        this.itemSlotsExternal = new List<ItemSlot>();
+
+        // Set other inventory components
         this.InventoryUI = GameObject.Find("InventoryUI");
+        // this.itemSlotDisplay = GameObject.Find("InventorySlotsDisplay");
         this.inactiveItems = GameObject.Find("InactiveItems");
         this.inactiveItems.SetActive(false);
         this.ArmObjects = new List<GameObject>();
-        this.itemSlotsActive = new List<ItemSlot>();
-        this.itemSlotsInactive = new List<ItemSlot>();
+        this.itemStorages = new List<GameObject>();
+
+        // Set inventory description items
         this.itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
         this.itemDescriptionImage.enabled = false;
         this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
@@ -87,27 +105,15 @@ public class Inventory : MonoBehaviour
             ArmObjects.Add(itemSlot.gameObject);
         }
 
-        // Set active item slots
-        ItemSlot itemSlotAdded;
-        for (int i = 0; i < this.transform.GetChild(0).childCount; i++)
+        foreach (Transform itemSlotDisplay in GameObject.Find("InventorySlotsDisplay").transform)
         {
-            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(ArmSlots.transform);
-            itemSlotAdded = ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>();
-            itemSlotAdded.isArm = true;
-            itemSlotAdded.keyPress = (i == 0) ? useLeftArm : useRightArm;
-            itemSlotAdded.storedIndex = i;
-            itemSlotsActive.Add(itemSlotAdded);
+            itemStorages.Add(itemSlotDisplay.gameObject);
         }
 
-        // Set inactive item slots
-        for (int i = 0; i < this.maxStorageSlots; i++)
-        {
-            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform);
-            itemSlotAdded = StorageSlots.transform.GetChild(i).GetComponent<ItemSlot>();
-            itemSlotAdded.isArm = false;
-            itemSlotAdded.storedIndex = i;
-            itemSlotsInactive.Add(itemSlotAdded);
-        }
+        // Create all item slots
+        AddItemSlots(ArmSlots, itemSlotsActive, this.transform.GetChild(0).childCount);
+        AddItemSlots(StorageSlots, itemSlotsInactive, this.maxStorageSlots);
+        AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots);
 
         // Fill up inventory with pre-selected items
         foreach (GameObject item in startingItems)
@@ -115,13 +121,48 @@ public class Inventory : MonoBehaviour
             PickupItem(item);
         }
 
+        // Hide all option buttons
+        foreach (Transform button in itemOptions.transform)
+        {
+            button.gameObject.SetActive(false);
+        }
+
+        // this.ArmSlots.transform.parent.gameObject.SetActive(false);
+        this.ExternalSlots.transform.parent.gameObject.SetActive(false);
+
         // Hide inventory
         this.InventoryUI.SetActive(menuActivated);
     }
 
+    private void AddItemSlots(GameObject slotObject, List<ItemSlot> slotList, int slotCount)
+    {
+        ItemSlot itemSlotAdded;
+        for (int i = 0; i < slotCount; i++)
+        {
+            // Create item slot from prefab
+            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(slotObject.transform);
+            itemSlotAdded = slotObject.transform.GetChild(i).GetComponent<ItemSlot>();
+            itemSlotAdded.storedIndex = i;
+
+            // Set slot-dependent parameters
+            if (slotObject == this.ArmSlots)
+            {
+                itemSlotAdded.isArm = true;
+                itemSlotAdded.keyPress = (i == 0) ? useLeftArm : useRightArm;
+            }
+            else
+            {
+                itemSlotAdded.isArm = false;
+            }
+
+            // Add the slot to a list for easy access
+            slotList.Add(itemSlotAdded);
+        }
+    }
+
     private void Update()
     {
-        // Pick up item
+        // Open inventory
         if (Input.GetKeyDown(openInventory))
         {
             menuActivated = !menuActivated;
@@ -141,8 +182,12 @@ public class Inventory : MonoBehaviour
             }
         }
 
-        // Set displayability of item options
-        this.itemOptions.SetActive(ItemSlot.itemIsSelected);
+        // DEBUGGING STUFF
+        if (Input.GetKeyDown(debugSwitchStorage)) displayExternal = (displayExternal + 1) % itemStorages.Count;
+        for (int i = 0; i < itemStorages.Count; i++)
+        {
+            itemStorages[i].SetActive(i == displayExternal);
+        }
     }
 
     public void PickupItem(GameObject pickedUpItem)
@@ -269,7 +314,7 @@ public class Inventory : MonoBehaviour
     public void DeselectAllSlots()
     {
         // Deselect all item slots
-        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive))
+        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive).Concat(itemSlotsExternal))
         {
             if (slot.selectedSlot) { slot.selectedSlot.SetActive(false); }
             slot.thisItemSelected = false;
@@ -281,6 +326,10 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = "";
 
         ItemSlot.itemIsSelected = false;
+        foreach (Transform button in itemOptions.transform)
+        {
+            button.gameObject.SetActive(false);
+        }
     }
 
     public void SetDescription(Item item, Image itemImage)
@@ -289,6 +338,12 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = item.description;
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
         itemDescriptionImage.enabled = true;
+
+        // Loop through all the option buttons
+        foreach (Transform button in itemOptions.transform)
+        {
+            button.gameObject.SetActive(true);
+        }
     }
 
     public static void AddKey(string name, int count)
