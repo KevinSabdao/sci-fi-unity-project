@@ -28,11 +28,17 @@ public class EnemyHealth : MonoBehaviour
     public float Max => maxHealth;
     public bool IsAlive => Current > 0f;
 
-    // ignores all damage while on, set from code such as the boss during its opening roar
+    // ignores all damage while on, set from code such as the boss before the fight and during its opening roar
     public bool Invulnerable { get; set; }
 
-    // DamageZone multiplier of the last hit, above 1 means a weak point, read by UI on OnDamaged
+    // a hit that Invulnerable ignored. no damage and no OnDamaged, so no hit flash
+    public event Action DamageBlocked;
+
+    // DamageZone multiplier of the last hit, read by UI on OnDamaged
     public float LastDamageMultiplier { get; private set; } = 1f;
+
+    // the last hit landed on a DamageZone marked critical, such as the boss eye
+    public bool LastHitCritical { get; private set; }
 
     void Awake()
     {
@@ -44,13 +50,23 @@ public class EnemyHealth : MonoBehaviour
     // hitCollider is the collider the weapon struck, its DamageZone scales the damage
     public void TakeDamage(float amount, Collider hitCollider)
     {
-        if (!IsAlive || Invulnerable)
+        if (!IsAlive)
             return;
 
+        if (Invulnerable)
+        {
+            DamageBlocked?.Invoke();
+            return;
+        }
+
         float multiplier = 1f;
+        bool critical = false;
 
         if (hitCollider != null && hitCollider.TryGetComponent(out DamageZone zone))
+        {
             multiplier = zone.Multiplier;
+            critical = zone.Critical;
+        }
 
         amount *= multiplier;
 
@@ -58,6 +74,7 @@ public class EnemyHealth : MonoBehaviour
             return;
 
         LastDamageMultiplier = multiplier;
+        LastHitCritical = critical;
 
         Current = Mathf.Max(Current - amount, 0f);
 

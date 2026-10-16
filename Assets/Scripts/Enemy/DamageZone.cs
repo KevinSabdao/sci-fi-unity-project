@@ -6,5 +6,9 @@ public class DamageZone : MonoBehaviour
 {
     [SerializeField] float multiplier = 1f;
 
+    // hits here count as critical for the UI, such as the boss eye. the multiplier alone does not
+    [SerializeField] bool critical;
+
     public float Multiplier => multiplier;
+    public bool Critical => critical;
 }
