@@ -11,7 +11,6 @@ public class MeleeWeapon : Weapon
     public float range = 2;
 
     private readonly Vector3 attackRotation = new Vector3(-90, 180, 0);
-    private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
 
     private void Update()
     {
@@ -37,7 +36,9 @@ public class MeleeWeapon : Weapon
         RaycastHit hit;
 
         Physics.Raycast(ray, out hit);
-        Vector3 rotateFrom = holdRotation;
+
+        // Swing back to the pose the inventory gave the sword in the hand
+        Quaternion rotateFrom = HoldLocalRotation();
 
         // Rotate the sword towards an enemy if targeting one, otherwise swing forwards
         float zRotation;
@@ -49,11 +50,11 @@ public class MeleeWeapon : Weapon
         {
             zRotation = 0;
         }
-        Vector3 rotateTo = new Vector3(attackRotation.x, attackRotation.y, zRotation);
+        Quaternion rotateTo = Quaternion.Euler(attackRotation.x, attackRotation.y, zRotation);
         StartCoroutine(AnimateAttack(rotateTo, rotateFrom));
 
         // Hit the enemy if it is within range
-        if (hit.transform && hit.distance <= range) StartCoroutine(HitEnemy(hit.transform?.gameObject));
+        if (hit.transform && hit.distance <= range) StartCoroutine(HitEnemy(hit.collider));
 
         // Check if the attack has finished
         if (allowReset)
@@ -63,17 +64,18 @@ public class MeleeWeapon : Weapon
         }
     }
 
-    private IEnumerator HitEnemy(GameObject enemy)
+    private IEnumerator HitEnemy(Collider hitCollider)
     {
         // Get the enemy that was hit
-        EnemyHealth enemyHealth = enemy.GetComponentInParent<EnemyHealth>();
+        EnemyHealth enemyHealth = hitCollider.GetComponentInParent<EnemyHealth>();
         if (!enemyHealth) yield break;
 
         // Hit when the sword collides
         yield return new WaitForSeconds((attackingDelay / 2));
 
-        // If an enemy has definitely been hit
-        enemyHealth.TakeDamage(CalculateDamage());
+        // The collider picks the damage zone, such as the boss eye
+        // It can be gone after the wait, which counts as a normal hit
+        enemyHealth.TakeDamage(CalculateDamage(), hitCollider ? hitCollider : null);
     }
 
     public float CalculateDamage()
@@ -86,7 +88,7 @@ public class MeleeWeapon : Weapon
         return (Random.Range(0f, 1f) <= critChance) ? critMultiplier : 1f;
     }
 
-    private IEnumerator AnimateAttack(Vector3 rotateTo, Vector3 rotateFrom)
+    private IEnumerator AnimateAttack(Quaternion rotateTo, Quaternion rotateFrom)
     {
         StartCoroutine(RotateOverTime(rotateTo)); // Swing down
         yield return new WaitForSeconds((attackingDelay /  2));
@@ -94,25 +96,23 @@ public class MeleeWeapon : Weapon
     }
 
     // Thank you person at https://stackoverflow.com/a/61479886
-    private IEnumerator RotateOverTime(Vector3 targetRotationVector)
+    private IEnumerator RotateOverTime(Quaternion targetRotation)
     {
-        // Convert vectors to desired rotations
-        Vector3 directionFacing = transform.parent.transform.rotation.eulerAngles;
-        Quaternion startRotation = transform.rotation;
-        Quaternion targetRotation = Quaternion.Euler(targetRotationVector + directionFacing);
+        // Relative to the arm, so the swing follows the camera while it plays
+        Quaternion startRotation = transform.localRotation;
 
         // Swing for half the attacking delay duration
         float timePassed = 0f;
         while (timePassed < attackingDelay / 2)
         {
             float factor = timePassed / (attackingDelay / 2);
-            transform.rotation = Quaternion.Slerp(startRotation, targetRotation, factor);
+            transform.localRotation = Quaternion.Slerp(startRotation, targetRotation, factor);
             timePassed += Time.deltaTime;
 
             yield return null;
         }
 
         // Fix the rotation in case it is wrong by a small amount :)
-        transform.rotation = targetRotation;
+        transform.localRotation = targetRotation;
     }
 }

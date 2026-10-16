@@ -20,8 +20,11 @@ public class Inventory : MonoBehaviour
     // Inventory physical objects
     private List<GameObject> ArmObjects;
     private GameObject inactiveItems;
-    private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
-    private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
+
+    // Dropping: how far in front of the player, the gap kept from walls, how far down to look for ground
+    private const float dropDistance = 1f;
+    private const float dropWallGap = 0.3f;
+    private const float dropGroundSearch = 10f;
 
     // Inventory internal item slots
     private List<ItemSlot> itemSlotsActive;
@@ -47,6 +50,8 @@ public class Inventory : MonoBehaviour
     [Header("Keybinds:")]
     [SerializeField]
     private KeyCode openInventory;
+    [SerializeField]
+    private KeyCode openInventoryAlternative;
     [SerializeField]
     private KeyCode useLeftArm;
     [SerializeField]
@@ -115,13 +120,17 @@ public class Inventory : MonoBehaviour
         }
 
         // Hide inventory
+        // Static values survive between play sessions, so always start closed
+        menuActivated = false;
         this.InventoryUI.SetActive(menuActivated);
     }
 
     private void Update()
     {
         // Pick up item
-        if (Input.GetKeyDown(openInventory))
+        // Esc also closes it, and it never opens on top of the pause menu
+        bool togglePressed = Input.GetKeyDown(openInventory) || Input.GetKeyDown(openInventoryAlternative) || (menuActivated && Input.GetKeyDown(KeyCode.Escape));
+        if (togglePressed && !PauseMenu.isPaused)
         {
             menuActivated = !menuActivated;
             InventoryUI.SetActive(menuActivated);
@@ -245,8 +254,19 @@ public class Inventory : MonoBehaviour
         // Store position and rotation of the item for future dropping feature
         if (itemAddedObject)
         {
-            itemAddedObject.transform.localPosition = this.holdPosition;
-            itemAddedObject.transform.localRotation = Quaternion.Euler(this.holdRotation.x, this.holdRotation.y, this.holdRotation.z);
+            itemAddedObject.transform.localPosition = itemAddedItem.HoldLocalPosition();
+            itemAddedObject.transform.localRotation = itemAddedItem.HoldLocalRotation();
+
+            // Held items must not block the player, bullets or raycasts
+            SetItemCollidersEnabled(itemAddedObject, false);
+        }
+    }
+
+    private void SetItemCollidersEnabled(GameObject itemObject, bool enabled)
+    {
+        foreach (Collider itemCollider in itemObject.GetComponentsInChildren<Collider>(true))
+        {
+            itemCollider.enabled = enabled;
         }
     }
 
@@ -336,22 +356,63 @@ public class Inventory : MonoBehaviour
     {
         Item dropItemItem = dropItemObject.GetComponent<Item>();
 
-        // Place item on the ground at the player's feet
+        // Place item on the ground in front of the player
         dropItemObject.transform.SetParent(null);
-        Vector3 parentPosition = this.transform.parent.transform.position;
-        Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
-        dropItemObject.transform.localPosition = new Vector3(
-                parentPosition.x,
-                parentPosition.y,
-                parentPosition.z
-        );
+        Transform view = this.transform.parent;
+        Vector3 parentRotation = view.rotation.eulerAngles;
         dropItemObject.transform.localRotation = Quaternion.Euler(
                 dropItemItem.spawnRotation.x,
                 parentRotation.y + dropItemItem.spawnRotation.y,
                 dropItemItem.spawnRotation.z
         );
 
+        bool foundGround = FindDropGround(view, out Vector3 dropPoint);
+        dropItemObject.transform.localPosition = dropPoint;
+
+        // Rest the model on the ground instead of floating or sinking into it
+        if (foundGround)
+        {
+            Renderer[] renderers = dropItemObject.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                float lowest = renderers.Min(itemRenderer => itemRenderer.bounds.min.y);
+                dropItemObject.transform.position += Vector3.up * (dropPoint.y - lowest);
+            }
+        }
+
         dropItemItem.isActive = false;
+
+        // Turned off while in the inventory, needed again to be picked up
+        SetItemCollidersEnabled(dropItemObject, true);
+
+        // Items on the ground can still be picked up, but never block the player
+        foreach (Collider itemCollider in dropItemObject.GetComponentsInChildren<Collider>(true))
+        {
+            itemCollider.isTrigger = true;
+        }
+    }
+
+    // Ground in front of the view, kept on this side of any wall
+    private bool FindDropGround(Transform view, out Vector3 groundPoint)
+    {
+        Vector3 forward = Vector3.ProjectOnPlane(view.forward, Vector3.up).normalized;
+        if (forward == Vector3.zero) forward = view.root.forward;
+
+        float distance = dropDistance;
+        if (Physics.Raycast(view.position, forward, out RaycastHit wallHit, dropDistance, ~0, QueryTriggerInteraction.Ignore))
+        {
+            distance = Mathf.Max(0f, wallHit.distance - dropWallGap);
+        }
+
+        Vector3 above = view.position + forward * distance;
+        if (Physics.Raycast(above, Vector3.down, out RaycastHit groundHit, dropGroundSearch, ~0, QueryTriggerInteraction.Ignore))
+        {
+            groundPoint = groundHit.point;
+            return true;
+        }
+
+        groundPoint = above;
+        return false;
     }
 
     public void DropSelectedItemAll()

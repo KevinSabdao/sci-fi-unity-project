@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 12.26707, y: -0, z: 36.19423}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.15, y: 0.15, z: 0.15}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -108,7 +108,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -153,6 +153,8 @@ MonoBehaviour:
   stackCount: 1
   spawnPosition: {x: 0, y: 0, z: 0}
   spawnRotation: {x: 0, y: 0, z: 0}
+  holdPosition: {x: 0, y: -0.03, z: 0.1}
+  holdRotation: {x: 0, y: 180, z: 0}
   platformScale: {x: 0.1, y: 3, z: 3}
   platformStayTime: 3
   platformPrefab: {fileID: 1818437252651627170, guid: a9dc855ae877d5662b9afe87521868f3, type: 3}

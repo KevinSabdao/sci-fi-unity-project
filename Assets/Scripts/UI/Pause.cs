@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 
 
 
+// Runs before the Inventory, so the Esc that closes the inventory is not read as a pause
+[DefaultExecutionOrder(-1)]
 public class PauseMenu : MonoBehaviour
 {
     public static bool isPaused = false;
@@ -20,7 +22,8 @@ public class PauseMenu : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // While the inventory is open, Esc closes it instead of pausing
+        if (Input.GetKeyDown(KeyCode.Escape) && !Inventory.menuActivated)
         {
             if (isPaused)
             {

@@ -242,7 +242,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0.6532815, y: 0.6532815, z: -0.27059805, w: 0.27059805}
   m_LocalPosition: {x: -0.487, y: 3.605, z: 1.013}
-  m_LocalScale: {x: 2.6731064, y: 2.6731064, z: 2.6731064}
+  m_LocalScale: {x: 1.12, y: 1.12, z: 1.12}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 855871005268169612}
@@ -328,6 +328,8 @@ MonoBehaviour:
   stackCount: 1
   spawnPosition: {x: 0, y: 0, z: 0}
   spawnRotation: {x: 0, y: -90, z: -90}
+  holdPosition: {x: 0, y: 0.05, z: 0.25}
+  holdRotation: {x: 0, y: 180, z: 0}
   playerCamera: {fileID: 0}
   durabilityMax: 20
   durability: 0
@@ -374,7 +376,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
