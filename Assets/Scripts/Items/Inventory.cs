@@ -367,4 +367,14 @@ public class Inventory : MonoBehaviour
 
         DeselectAllSlots();
     }
+
+    //Get functions for left and right arm
+    public GameObject LeftArm
+    {
+        get => itemSlotsActive.Count > 0 ? itemSlotsActive[0].itemObject : null;
+    }
+    public GameObject RightArm
+    {
+        get => itemSlotsActive.Count > 1 ? itemSlotsActive[1].itemObject : null;
+    }
 }
