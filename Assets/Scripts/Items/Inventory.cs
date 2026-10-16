@@ -51,6 +51,7 @@ public class Inventory : MonoBehaviour
 
     // Other inventory values
     public static bool menuActivated = false;
+    public static bool externalStorageOpened = false;
     public static int storageOpen;
     private const int STORAGE_MAIN = 0;
 
@@ -125,7 +126,6 @@ public class Inventory : MonoBehaviour
         }
 
         // Hide all option buttons
-        switchStorageButtons.SetActive(true);
         itemControlButtons.SetActive(false);
 
         // Set the open storage to the inventory (should always be 0)
@@ -171,7 +171,6 @@ public class Inventory : MonoBehaviour
             externalStorage = (Instantiate(StoragePrefab) as GameObject);
             externalStorage.transform.SetParent(storageParent.transform);
             itemStorages.Add(externalStorage);
-            print(slotCount / 20 + 1);
             AddItemSlots(
                     externalStorage.transform.GetChild(0).gameObject,
                     itemSlotsExternal,
@@ -186,28 +185,37 @@ public class Inventory : MonoBehaviour
         // Open inventory
         if (Input.GetKeyDown(openInventory))
         {
-            menuActivated = !menuActivated;
-            InventoryUI.SetActive(menuActivated);
-
-            if (menuActivated)
-            {
-                // FirstPersonLook owns the cursor and Time.timeScale, asking it
-                // keeps the pointer free AND visible, and stops a click on a
-                // slot from being read as "click to resume"
-                FirstPersonLook.PushUiModal();
-            }
-            else
-            {
-                FirstPersonLook.PopUiModal();
-                DeselectAllSlots();
-                storageOpen = STORAGE_MAIN;
-            }
+            ToggleInventory();
         }
 
         // Display the currently selected storage
         for (int i = 0; i < itemStorages.Count; i++)
         {
             itemStorages[i].SetActive(i == storageOpen);
+        }
+
+        // Set switch storage buttons depending on external storage open state
+        switchStorageButtons.SetActive(externalStorageOpened);
+    }
+
+    public void ToggleInventory()
+    {
+        menuActivated = !menuActivated;
+        InventoryUI.SetActive(menuActivated);
+
+        if (menuActivated)
+        {
+            // FirstPersonLook owns the cursor and Time.timeScale, asking it
+            // keeps the pointer free AND visible, and stops a click on a
+            // slot from being read as "click to resume"
+            FirstPersonLook.PushUiModal();
+        }
+        else
+        {
+            FirstPersonLook.PopUiModal();
+            DeselectAllSlots();
+            storageOpen = STORAGE_MAIN;
+            externalStorageOpened = false;
         }
     }
 

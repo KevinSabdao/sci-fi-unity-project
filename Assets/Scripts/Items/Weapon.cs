@@ -50,6 +50,7 @@ public class Weapon : Item
 
     private void Awake()
     {
+        base.Awake();
         durability = durabilityMax;
         readyToShoot = true;
         burstBulletsLeft = bulletsPerBurst;
