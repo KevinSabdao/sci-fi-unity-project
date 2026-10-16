@@ -17,7 +17,8 @@ public class Inventory : MonoBehaviour
     [SerializeField]
     private int maxStorageSlots; // Maximum the UI can handle is 15 :/
     [SerializeField]
-    private int maxExternalSlots; // Maximum the UI can handle is 20 :/
+    private int maxExternalSlots;
+    private const int EXTERNAL_SLOTS_PER_SCREEN = 20;
 
     // Inventory physical objects
     private List<GameObject> ArmObjects;
@@ -36,9 +37,10 @@ public class Inventory : MonoBehaviour
     private GameObject InventoryUI;
     [SerializeField]
     private GameObject ItemSlotPrefab;
+    [SerializeField]
+    private GameObject StoragePrefab;
     private GameObject ArmSlots;
     private GameObject StorageSlots;
-    private GameObject ExternalSlots;
     private static GameObject switchStorageButtons;
     private static GameObject itemControlButtons;
 
@@ -82,7 +84,6 @@ public class Inventory : MonoBehaviour
         this.itemSlotsActive = new List<ItemSlot>();
         this.StorageSlots = GameObject.Find("StorageSlots");
         this.itemSlotsInactive = new List<ItemSlot>();
-        this.ExternalSlots = GameObject.Find("ExternalSlots");
         this.itemSlotsExternal = new List<ItemSlot>();
 
         // Set other inventory components
@@ -114,7 +115,8 @@ public class Inventory : MonoBehaviour
         // Create all item slots
         AddItemSlots(ArmSlots, itemSlotsActive, this.transform.GetChild(0).childCount, STORAGE_MAIN);
         AddItemSlots(StorageSlots, itemSlotsInactive, this.maxStorageSlots, STORAGE_MAIN);
-        AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots, 1);
+        AddExternalStorage();
+        // AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots, 1);
 
         // Fill up inventory with pre-selected items
         foreach (GameObject item in startingItems)
@@ -157,6 +159,25 @@ public class Inventory : MonoBehaviour
 
             // Add the slot to a list for easy access
             slotList.Add(itemSlotAdded);
+        }
+    }
+
+    private void AddExternalStorage()
+    {
+        GameObject storageParent = GameObject.Find("InventorySlotsDisplay");
+        GameObject externalStorage;
+        for (int slotCount = 0; slotCount < maxExternalSlots; slotCount += EXTERNAL_SLOTS_PER_SCREEN) // hardcoded for now
+        {
+            externalStorage = (Instantiate(StoragePrefab) as GameObject);
+            externalStorage.transform.SetParent(storageParent.transform);
+            itemStorages.Add(externalStorage);
+            print(slotCount / 20 + 1);
+            AddItemSlots(
+                    externalStorage.transform.GetChild(0).gameObject,
+                    itemSlotsExternal,
+                    Math.Min(EXTERNAL_SLOTS_PER_SCREEN, maxExternalSlots - slotCount),
+                    slotCount / EXTERNAL_SLOTS_PER_SCREEN + 1
+            );
         }
     }
 
@@ -285,7 +306,8 @@ public class Inventory : MonoBehaviour
             }
             else
             {
-                itemSlot = itemSlotsExternal[index].GetComponent<ItemSlot>();
+                int insertIndex = index + EXTERNAL_SLOTS_PER_SCREEN * (storageStored - 1);
+                itemSlot = itemSlotsExternal[insertIndex].GetComponent<ItemSlot>();
             }
         }
 
