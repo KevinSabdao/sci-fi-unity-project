@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,27 +14,34 @@ public class Inventory : MonoBehaviour
     [Header("Inventory:")]
     [SerializeField]
     private List<GameObject> startingItems;
-
-    private List<GameObject> itemSlots;
-    private List<GameObject> activeItemSlots;
     [SerializeField]
     private int maxStorageSlots; // Maximum the UI can handle is 15 :/
+
+    // Inventory physical objects
+    private List<GameObject> ArmObjects;
+    private GameObject inactiveItems;
+    private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
+    private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
+
+    // Inventory internal item slots
+    private List<ItemSlot> itemSlotsActive;
+    private List<ItemSlot> itemSlotsInactive;
 
     // Inventory UI
     private GameObject InventoryUI;
     [SerializeField]
     private GameObject ItemSlotPrefab;
     private GameObject ArmSlots;
-    private List<GameObject> activeArmSlots;
     private GameObject StorageSlots;
-    private List<GameObject> inactiveSlots;
+
     public static List<Keys> keyList = new List<Keys>();
     public static int keyCounter = 0;
 
-    private bool menuActivated = false;
+    public static bool menuActivated = false;
     internal Image itemDescriptionImage;
     internal TMP_Text itemDescriptionName;
     internal TMP_Text itemDescriptionText;
+    private GameObject itemOptions; 
 
     // Keybinds
     [Header("Keybinds:")]
@@ -60,29 +69,43 @@ public class Inventory : MonoBehaviour
         this.ArmSlots = GameObject.Find("ArmSlots");
         this.StorageSlots = GameObject.Find("StorageSlots");
         this.InventoryUI = GameObject.Find("InventoryUI");
-        this.itemSlots = new List<GameObject>();
-        this.activeItemSlots = new List<GameObject>();
-        this.activeArmSlots = new List<GameObject>();
-        this.inactiveSlots = new List<GameObject>();
+        this.inactiveItems = GameObject.Find("InactiveItems");
+        this.inactiveItems.SetActive(false);
+        this.ArmObjects = new List<GameObject>();
+        this.itemSlotsActive = new List<ItemSlot>();
+        this.itemSlotsInactive = new List<ItemSlot>();
         this.itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
         this.itemDescriptionImage.enabled = false;
         this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
         this.itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        this.itemOptions = GameObject.Find("ItemOptions");
 
-        // Set item slots
+        // Set arm objects
         foreach(Transform itemSlot in GameObject.Find("InventoryStorage").transform)
         {
-            itemSlots.Add(itemSlot.gameObject);
+            ArmObjects.Add(itemSlot.gameObject);
         }
 
         // Set active item slots
-        for (int i = 0; i < this.transform.GetChild(0).childCount - 1; i++)
+        ItemSlot itemSlotAdded;
+        for (int i = 0; i < this.transform.GetChild(0).childCount; i++)
         {
-            activeItemSlots.Add(itemSlots[i]);
             (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(ArmSlots.transform);
-            ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>().isArm = true;
-            ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>().keyPress = (i == 0) ? useLeftArm : useRightArm;
-            activeArmSlots.Add(ArmSlots.transform.GetChild(i).gameObject);
+            itemSlotAdded = ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>();
+            itemSlotAdded.isArm = true;
+            itemSlotAdded.keyPress = (i == 0) ? useLeftArm : useRightArm;
+            itemSlotAdded.storedIndex = i;
+            itemSlotsActive.Add(itemSlotAdded);
+        }
+
+        // Set inactive item slots
+        for (int i = 0; i < this.maxStorageSlots; i++)
+        {
+            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform);
+            itemSlotAdded = StorageSlots.transform.GetChild(i).GetComponent<ItemSlot>();
+            itemSlotAdded.isArm = false;
+            itemSlotAdded.storedIndex = i;
+            itemSlotsInactive.Add(itemSlotAdded);
         }
 
         // Fill up inventory with pre-selected items
@@ -116,112 +139,139 @@ public class Inventory : MonoBehaviour
                 DeselectAllSlots();
             }
         }
+
+        // Set displayability of item options
+        this.itemOptions.SetActive(ItemSlot.itemIsSelected);
     }
 
     public void PickupItem(GameObject pickedUpItem)
     {
-        if (inactiveSlots.Count > maxStorageSlots) { return; } // If no more items can go into the inventory
+        bool addedToInventory;
+
+        // Put item into next available stack (if one exists)
+        addedToInventory = ExistingStackExists(pickedUpItem);
 
         // Put item into next active slot
-        for (int i = 0; i < activeItemSlots.Count; i++)
+        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsActive, true, pickedUpItem);
+
+        // Put item into storage if no active slots are available
+        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsInactive, false, pickedUpItem);
+    }
+
+    private bool ExistingStackExists(GameObject item)
+    {
+        // Get item components to compare stack sizes
+        Item itemFrom = item.GetComponent<Item>();
+        Item itemTo;
+
+        // Check if a slot has an incomplete stack of the same item type
+        foreach(ItemSlot itemSlot in itemSlotsActive.Concat(itemSlotsInactive))
         {
-            if (activeItemSlots[i].transform.childCount == 0)
+            if (itemSlot.itemObject == null) { continue; }
+        
+            itemTo = itemSlot.itemItem;
+            if (
+                    itemTo.itemType == itemFrom.itemType &&
+                    itemTo.stackCount < itemTo.stackCountMax
+            )
             {
-                AddItemIntoSlot(pickedUpItem, activeItemSlots[i], i, true);
-                return;
+                // If the transfer stack was successful (no remainder)
+                if (TransferItemStack(item, itemSlot.itemObject)) return true;
             }
         }
 
-        // Put item into storage if no active slots are available
-        (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
-        inactiveSlots.Add(StorageSlots.transform.GetChild(inactiveSlots.Count).gameObject);
-        AddItemIntoSlot(pickedUpItem, itemSlots[itemSlots.Count - 1], inactiveSlots.Count - 1, false);
+        return false;
     }
 
-    private void AddItemIntoSlot(GameObject itemAdded, GameObject slot, int index, bool inActiveSlot)
+    public bool TransferItemStack(GameObject itemFromObject, GameObject itemToObject)
     {
-        // Add physical item corresponding inventory location
-        itemAdded.transform.SetParent(slot.transform, false);
+        Item itemFromItem = itemFromObject.GetComponent<Item>();
+        Item itemToItem = itemToObject.GetComponent<Item>();
 
-        // Add UI item to corresponding inventory location
+        // Calculate highest transfer amount (as stack sizes aren't always 1)
+        int stackTransfer = Math.Min(itemToItem.stackCountMax - itemToItem.stackCount, itemFromItem.stackCount);
+        itemToItem.stackCount += stackTransfer;
+        itemFromItem.stackCount -= stackTransfer;
+
+        // Delete the from stack if it no longer has items
+        if (itemFromItem.stackCount <= 0)
+        {
+            Destroy(itemFromObject);
+        }
+
+        return itemFromItem.stackCount <= 0;
+
+    }
+
+    private bool CheckItemSlots(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
+    {
+        // Check if a slot is empty
+        for (int i = 0; i < itemSlotsChecking.Count; i++)
+        {
+            if (itemSlotsChecking[i].itemObject == null)
+            {
+                AddItemIntoSlot(item, i, isActiveSlot);
+                return true;
+            }
+
+        }
+
+        return false;
+    }
+
+    private void AddItemIntoSlot(GameObject itemAddedObject, int index, bool inActiveSlot)
+    {
+        Item itemAddedItem = itemAddedObject ? itemAddedObject.GetComponent<Item>() : null;
+
+        // Add item to correct inventory location
         ItemSlot itemSlot;
         if (inActiveSlot)
         {
-            itemSlot = activeArmSlots[index].GetComponent<ItemSlot>();
-            itemSlot.PickupItem(itemAdded);
-            itemSlot.storedIndex = index;
-            itemSlot.isArm = inActiveSlot;
+            itemAddedItem?.transform.SetParent(ArmObjects[index].transform, false);
+            itemSlot = itemSlotsActive[index].GetComponent<ItemSlot>();
         }
         else
         {
-            itemSlot = inactiveSlots[index].GetComponent<ItemSlot>();
-            itemSlot.PickupItem(itemAdded);
-            itemSlot.storedIndex = index;
-            itemSlot.isArm = inActiveSlot;
+            itemAddedItem?.transform.SetParent(inactiveItems.transform, false);
+            itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
         }
 
-        // Set active state of item
-        Item item = itemAdded.GetComponent<Item>();
-        item.isActive = inActiveSlot;
+        // Store basic bookkeeping
+        itemSlot.PickupItem(itemAddedObject ? itemAddedObject : null);
+        itemSlot.storedIndex = index;
+        itemSlot.isArm = inActiveSlot;
+        if (itemAddedItem) { itemAddedItem.isActive = inActiveSlot; }
 
         // Store position and rotation of the item for future dropping feature
-        itemAdded.transform.localPosition = new Vector3(item.spawnPosition.x, item.spawnPosition.y, item.spawnPosition.z);
-        itemAdded.transform.localRotation = Quaternion.Euler(item.spawnRotation.x, item.spawnRotation.y, item.spawnRotation.z);
+        if (itemAddedObject)
+        {
+            itemAddedObject.transform.localPosition = this.holdPosition;
+            itemAddedObject.transform.localRotation = Quaternion.Euler(this.holdRotation.x, this.holdRotation.y, this.holdRotation.z);
+        }
     }
 
     public void SwapItems(ItemSlot itemArm, ItemSlot itemStorage)
     {
         // Create separate objects to avoid broken reference
-        GameObject itemStorageItem = itemStorage.item;
-        GameObject itemArmItem = itemArm.item;
+        GameObject itemStorageObject = itemStorage.itemObject;
+        GameObject itemArmObject = itemArm.itemObject;
         int storageIndex = itemStorage.storedIndex;
         int armIndex = itemArm.storedIndex;
 
-        // Add item from storage to arm
-        AddItemIntoSlot(itemStorageItem, activeItemSlots[armIndex], armIndex, true);
-
-        // Add item to either arm or storage
-        if (itemStorage.isArm)
-        {
-            AddItemIntoSlot(itemArmItem, activeItemSlots[storageIndex], storageIndex, true);
-        }
-        else // Put item into storage if no active slots are available
-        {
-            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform, false);
-            inactiveSlots.Add(StorageSlots.transform.GetChild(inactiveSlots.Count).gameObject);
-            AddItemIntoSlot(itemArmItem, itemSlots[itemSlots.Count - 1], inactiveSlots.Count - 1, false);
-
-            Destroy(inactiveSlots[storageIndex].gameObject);
-            inactiveSlots.RemoveAt(storageIndex);
-        }
-
-        // Fix stored indexes
-        for (int i = 0; i < inactiveSlots.Count; i++)
-        {
-            inactiveSlots[i].GetComponent<ItemSlot>().storedIndex = i;
-        }
+        // Actually swap items
+        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm);
+        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm);
 
         DeselectAllSlots();
     }
 
     public void DeselectAllSlots()
     {
-        ItemSlot itemSlot;
-
-        // Deselect all arm slots
-        foreach (GameObject slot in activeArmSlots)
+        // Deselect all item slots
+        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive))
         {
-            itemSlot = slot.GetComponent<ItemSlot>();
-            if (itemSlot.selectedSlot) { itemSlot.selectedSlot.SetActive(false); }
-            itemSlot.thisItemSelected = false;
-        }
-
-        // Deselect all storage slots
-        foreach (GameObject slot in inactiveSlots)
-        {
-            itemSlot = slot.GetComponent<ItemSlot>();
-            if (itemSlot.selectedSlot) { itemSlot.selectedSlot.SetActive(false); }
-            itemSlot.thisItemSelected = false;
+            if (slot.selectedSlot) { slot.selectedSlot.SetActive(false); }
+            slot.thisItemSelected = false;
         }
 
         // Remove name and description text
@@ -232,14 +282,15 @@ public class Inventory : MonoBehaviour
         ItemSlot.itemIsSelected = false;
     }
 
-    public void SetDescription(GameObject itemObject, Image itemImage)
+    public void SetDescription(Item item, Image itemImage)
     {
-        Item itemItem = itemObject.GetComponent<Item>();
-        itemDescriptionName.text = itemItem.itemName;
-        itemDescriptionText.text = itemItem.description;
+        itemDescriptionName.text = item.itemName;
+        itemDescriptionText.text = item.description;
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
         itemDescriptionImage.enabled = true;
+        itemDescriptionImage.preserveAspect = true;
     }
+
     public static void AddKey(string name, int count)
     {
         Keys existingKey = keyList.Find(x => x.keyName == name);
@@ -256,18 +307,64 @@ public class Inventory : MonoBehaviour
         }
     }
 
+    public void DeleteSelectedItem()
+    {
+        Destroy(ItemSlot.itemSelected.itemObject);
+        DeselectAllSlots();
+    }
 
-    // private void DropCurrentItem(GameObject pickedUpItem)
-    // {
-    //     if (activeItemSlots.transform.childCount > 0)
-    //     {
-    //         var itemToDrop = activeItemSlots.transform.GetChild(0).gameObject;
+    public void DropSelectedItemOne()
+    {
+        ItemSlot itemSelected = ItemSlot.itemSelected;
+        GameObject dropItem = itemSelected.itemObject;
+        Item dropItemItem = dropItem.GetComponent<Item>();
+        
+        // Clone the dropped object and place a single item
+        GameObject dropItemClone = Instantiate(dropItem);
+        dropItemClone.GetComponent<Item>().stackCount = 1;
+        DropItem(dropItemClone);
 
-    //         itemToDrop.GetComponent<Item>().isActive = false;
+        // Delete the item if it was the last in the stack
+        dropItemItem.stackCount--;
+        if (dropItemItem.stackCount <= 0)
+        {
+            DeleteSelectedItem();
+        }
+    }
 
-    //         itemToDrop.transform.SetParent(pickedUpItem.transform.parent);
-    //         itemToDrop.transform.localPosition = pickedUpItem.transform.localPosition;
-    //         itemToDrop.transform.localRotation = pickedUpItem.transform.localRotation;
-    //     }
-    // }
+    private void DropItem(GameObject dropItemObject)
+    {
+        Item dropItemItem = dropItemObject.GetComponent<Item>();
+
+        // Place item on the ground at the player's feet
+        dropItemObject.transform.SetParent(null);
+        Vector3 parentPosition = this.transform.parent.transform.position;
+        Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
+        dropItemObject.transform.localPosition = new Vector3(
+                parentPosition.x,
+                parentPosition.y,
+                parentPosition.z
+        );
+        dropItemObject.transform.localRotation = Quaternion.Euler(
+                dropItemItem.spawnRotation.x,
+                parentRotation.y + dropItemItem.spawnRotation.y,
+                dropItemItem.spawnRotation.z
+        );
+
+        dropItemItem.isActive = false;
+    }
+
+    public void DropSelectedItemAll()
+    {
+        ItemSlot itemSelected = ItemSlot.itemSelected;
+        GameObject dropItemObject = itemSelected.itemObject;
+
+        DropItem(dropItemObject);
+
+        // Internally set it so the item is no longer in the inventory
+        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm);
+        ItemSlot.dropSelected = true;
+
+        DeselectAllSlots();
+    }
 }
