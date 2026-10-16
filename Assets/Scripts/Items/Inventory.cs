@@ -44,6 +44,8 @@ public class Inventory : MonoBehaviour
     public static int keyCounter = 0;
 
     public static bool menuActivated = false;
+    public static int storageOpen;
+    private const int STORAGE_MAIN = 0;
     internal Image itemDescriptionImage;
     internal TMP_Text itemDescriptionName;
     internal TMP_Text itemDescriptionText;
@@ -61,8 +63,6 @@ public class Inventory : MonoBehaviour
     // DEBUGGING STUFF
     [SerializeField]
     private KeyCode debugSwitchStorage;
-    public int displayExternal;
-
     
     private void Awake()
     {
@@ -111,9 +111,9 @@ public class Inventory : MonoBehaviour
         }
 
         // Create all item slots
-        AddItemSlots(ArmSlots, itemSlotsActive, this.transform.GetChild(0).childCount);
-        AddItemSlots(StorageSlots, itemSlotsInactive, this.maxStorageSlots);
-        AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots);
+        AddItemSlots(ArmSlots, itemSlotsActive, this.transform.GetChild(0).childCount, STORAGE_MAIN);
+        AddItemSlots(StorageSlots, itemSlotsInactive, this.maxStorageSlots, STORAGE_MAIN);
+        AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots, 1);
 
         // Fill up inventory with pre-selected items
         foreach (GameObject item in startingItems)
@@ -127,14 +127,14 @@ public class Inventory : MonoBehaviour
             button.gameObject.SetActive(false);
         }
 
-        // this.ArmSlots.transform.parent.gameObject.SetActive(false);
-        this.ExternalSlots.transform.parent.gameObject.SetActive(false);
+        // Set the open storage to the inventory (should always be 0)
+        storageOpen = 0;
 
         // Hide inventory
         this.InventoryUI.SetActive(menuActivated);
     }
 
-    private void AddItemSlots(GameObject slotObject, List<ItemSlot> slotList, int slotCount)
+    private void AddItemSlots(GameObject slotObject, List<ItemSlot> slotList, int slotCount, int storage)
     {
         ItemSlot itemSlotAdded;
         for (int i = 0; i < slotCount; i++)
@@ -143,6 +143,7 @@ public class Inventory : MonoBehaviour
             (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(slotObject.transform);
             itemSlotAdded = slotObject.transform.GetChild(i).GetComponent<ItemSlot>();
             itemSlotAdded.storedIndex = i;
+            itemSlotAdded.storedStorage = storage;
 
             // Set slot-dependent parameters
             if (slotObject == this.ArmSlots)
@@ -182,11 +183,16 @@ public class Inventory : MonoBehaviour
             }
         }
 
-        // DEBUGGING STUFF
-        if (Input.GetKeyDown(debugSwitchStorage)) displayExternal = (displayExternal + 1) % itemStorages.Count;
+        // Display the currently selected storage
         for (int i = 0; i < itemStorages.Count; i++)
         {
-            itemStorages[i].SetActive(i == displayExternal);
+            itemStorages[i].SetActive(i == storageOpen);
+        }
+
+        // DEBUGGING STUFF
+        if (Input.GetKeyDown(debugSwitchStorage))
+        {
+            storageOpen = (storageOpen + 1) % itemStorages.Count;
         }
     }
 
@@ -198,10 +204,10 @@ public class Inventory : MonoBehaviour
         addedToInventory = ExistingStackExists(pickedUpItem);
 
         // Put item into next active slot
-        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsActive, true, pickedUpItem);
+        if (!addedToInventory) addedToInventory = AttemptAddToInventory(itemSlotsActive, true, pickedUpItem);
 
         // Put item into storage if no active slots are available
-        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsInactive, false, pickedUpItem);
+        if (!addedToInventory) addedToInventory = AttemptAddToInventory(itemSlotsInactive, false, pickedUpItem);
     }
 
     private bool ExistingStackExists(GameObject item)
@@ -249,14 +255,14 @@ public class Inventory : MonoBehaviour
 
     }
 
-    private bool CheckItemSlots(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
+    private bool AttemptAddToInventory(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
     {
         // Check if a slot is empty
         for (int i = 0; i < itemSlotsChecking.Count; i++)
         {
             if (itemSlotsChecking[i].itemObject == null)
             {
-                AddItemIntoSlot(item, i, isActiveSlot);
+                AddItemIntoSlot(item, i, isActiveSlot, STORAGE_MAIN);
                 return true;
             }
 
@@ -265,7 +271,7 @@ public class Inventory : MonoBehaviour
         return false;
     }
 
-    private void AddItemIntoSlot(GameObject itemAddedObject, int index, bool inActiveSlot)
+    private void AddItemIntoSlot(GameObject itemAddedObject, int index, bool inActiveSlot, int storageStored)
     {
         Item itemAddedItem = itemAddedObject ? itemAddedObject.GetComponent<Item>() : null;
 
@@ -279,7 +285,14 @@ public class Inventory : MonoBehaviour
         else
         {
             itemAddedItem?.transform.SetParent(inactiveItems.transform, false);
-            itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
+            if (storageStored == 0)
+            {
+                itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
+            }
+            else
+            {
+                itemSlot = itemSlotsExternal[index].GetComponent<ItemSlot>();
+            }
         }
 
         // Store basic bookkeeping
@@ -305,8 +318,8 @@ public class Inventory : MonoBehaviour
         int armIndex = itemArm.storedIndex;
 
         // Actually swap items
-        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm);
-        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm);
+        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm, itemArm.storedStorage);
+        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm, itemStorage.storedStorage);
 
         DeselectAllSlots();
     }
@@ -417,7 +430,7 @@ public class Inventory : MonoBehaviour
         DropItem(dropItemObject);
 
         // Internally set it so the item is no longer in the inventory
-        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm);
+        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm, itemSelected.storedStorage);
         ItemSlot.dropSelected = true;
 
         DeselectAllSlots();

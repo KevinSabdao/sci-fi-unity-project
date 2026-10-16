@@ -14,6 +14,7 @@ public class ItemSlot : MonoBehaviour, IPointerClickHandler
     internal bool thisItemSelected;
     internal bool isArm = false;
     internal int storedIndex;
+    internal int storedStorage;
 
     // Item slot shared information
     public static bool itemIsSelected = false;
