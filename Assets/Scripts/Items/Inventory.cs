@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 public class Inventory : MonoBehaviour
 {
-    // Singleton
+    // Singleton for the player inventory
     public static Inventory Instance { get; set; }
 
     // Inventory slots
@@ -32,24 +32,29 @@ public class Inventory : MonoBehaviour
     private List<ItemSlot> itemSlotsInactive;
     private List<ItemSlot> itemSlotsExternal;
 
-    // Inventory UI
+    // Inventory UI GameObjects
     private GameObject InventoryUI;
     [SerializeField]
     private GameObject ItemSlotPrefab;
     private GameObject ArmSlots;
     private GameObject StorageSlots;
     private GameObject ExternalSlots;
+    private static GameObject switchStorageButtons;
+    private static GameObject itemControlButtons;
 
-    public static List<Keys> keyList = new List<Keys>();
-    public static int keyCounter = 0;
+    // Inventory description items
+    internal static Image itemDescriptionImage;
+    internal static TMP_Text itemDescriptionName;
+    internal static TMP_Text itemDescriptionText;
 
+    // Other inventory values
     public static bool menuActivated = false;
     public static int storageOpen;
     private const int STORAGE_MAIN = 0;
-    internal Image itemDescriptionImage;
-    internal TMP_Text itemDescriptionName;
-    internal TMP_Text itemDescriptionText;
-    private GameObject itemOptions; 
+
+    // Not sure what this does - it's not mine and I'm too scared to touch it :/
+    public static List<Keys> keyList = new List<Keys>();
+    public static int keyCounter = 0;
 
     // Keybinds
     [Header("Keybinds:")]
@@ -60,10 +65,6 @@ public class Inventory : MonoBehaviour
     [SerializeField]
     private KeyCode useRightArm;
 
-    // DEBUGGING STUFF
-    [SerializeField]
-    private KeyCode debugSwitchStorage;
-    
     private void Awake()
     {
         // Singleton
@@ -86,18 +87,18 @@ public class Inventory : MonoBehaviour
 
         // Set other inventory components
         this.InventoryUI = GameObject.Find("InventoryUI");
-        // this.itemSlotDisplay = GameObject.Find("InventorySlotsDisplay");
         this.inactiveItems = GameObject.Find("InactiveItems");
         this.inactiveItems.SetActive(false);
         this.ArmObjects = new List<GameObject>();
         this.itemStorages = new List<GameObject>();
 
         // Set inventory description items
-        this.itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
-        this.itemDescriptionImage.enabled = false;
-        this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
-        this.itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
-        this.itemOptions = GameObject.Find("ItemOptions");
+        itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
+        itemDescriptionImage.enabled = false;
+        itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
+        itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        switchStorageButtons = GameObject.Find("InventorySwitchButtons");
+        itemControlButtons = GameObject.Find("ItemControlButtons");
 
         // Set arm objects
         foreach(Transform itemSlot in GameObject.Find("InventoryStorage").transform)
@@ -122,10 +123,8 @@ public class Inventory : MonoBehaviour
         }
 
         // Hide all option buttons
-        foreach (Transform button in itemOptions.transform)
-        {
-            button.gameObject.SetActive(false);
-        }
+        switchStorageButtons.SetActive(true);
+        itemControlButtons.SetActive(false);
 
         // Set the open storage to the inventory (should always be 0)
         storageOpen = 0;
@@ -180,6 +179,7 @@ public class Inventory : MonoBehaviour
             {
                 FirstPersonLook.PopUiModal();
                 DeselectAllSlots();
+                storageOpen = STORAGE_MAIN;
             }
         }
 
@@ -187,12 +187,6 @@ public class Inventory : MonoBehaviour
         for (int i = 0; i < itemStorages.Count; i++)
         {
             itemStorages[i].SetActive(i == storageOpen);
-        }
-
-        // DEBUGGING STUFF
-        if (Input.GetKeyDown(debugSwitchStorage))
-        {
-            storageOpen = (storageOpen + 1) % itemStorages.Count;
         }
     }
 
@@ -339,10 +333,7 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = "";
 
         ItemSlot.itemIsSelected = false;
-        foreach (Transform button in itemOptions.transform)
-        {
-            button.gameObject.SetActive(false);
-        }
+        itemControlButtons.SetActive(false);
     }
 
     public void SetDescription(Item item, Image itemImage)
@@ -353,10 +344,7 @@ public class Inventory : MonoBehaviour
         itemDescriptionImage.enabled = true;
 
         // Loop through all the option buttons
-        foreach (Transform button in itemOptions.transform)
-        {
-            button.gameObject.SetActive(true);
-        }
+        itemControlButtons.SetActive(true);
     }
 
     public static void AddKey(string name, int count)
@@ -381,6 +369,28 @@ public class Inventory : MonoBehaviour
         DeselectAllSlots();
     }
 
+    private void DropItem(GameObject dropItemObject)
+        {
+            Item dropItemItem = dropItemObject.GetComponent<Item>();
+
+            // Place item on the ground at the player's feet
+            dropItemObject.transform.SetParent(null);
+            Vector3 parentPosition = this.transform.parent.transform.position;
+            Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
+            dropItemObject.transform.localPosition = new Vector3(
+                    parentPosition.x,
+                    parentPosition.y,
+                    parentPosition.z
+            );
+            dropItemObject.transform.localRotation = Quaternion.Euler(
+                    this.dropRotation.x,
+                    parentRotation.y + this.dropRotation.y,
+                    this.dropRotation.z
+            );
+
+            dropItemItem.isActive = false;
+        }
+
     public void DropSelectedItemOne()
     {
         ItemSlot itemSelected = ItemSlot.itemSelected;
@@ -400,28 +410,6 @@ public class Inventory : MonoBehaviour
         }
     }
 
-    private void DropItem(GameObject dropItemObject)
-    {
-        Item dropItemItem = dropItemObject.GetComponent<Item>();
-
-        // Place item on the ground at the player's feet
-        dropItemObject.transform.SetParent(null);
-        Vector3 parentPosition = this.transform.parent.transform.position;
-        Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
-        dropItemObject.transform.localPosition = new Vector3(
-                parentPosition.x,
-                parentPosition.y,
-                parentPosition.z
-        );
-        dropItemObject.transform.localRotation = Quaternion.Euler(
-                this.dropRotation.x,
-                parentRotation.y + this.dropRotation.y,
-                this.dropRotation.z
-        );
-
-        dropItemItem.isActive = false;
-    }
-
     public void DropSelectedItemAll()
     {
         ItemSlot itemSelected = ItemSlot.itemSelected;
@@ -434,5 +422,15 @@ public class Inventory : MonoBehaviour
         ItemSlot.dropSelected = true;
 
         DeselectAllSlots();
+    }
+
+    public void SwitchStorageLeft()
+    {
+        storageOpen = (storageOpen + itemStorages.Count - 1) % itemStorages.Count; // Never goes below 0
+    }
+
+    public void SwitchStorageRight()
+    {
+        storageOpen = (storageOpen + 1) % itemStorages.Count; // Never goes above total number of storages
     }
 }
