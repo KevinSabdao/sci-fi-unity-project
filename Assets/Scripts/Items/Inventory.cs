@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 public class Inventory : MonoBehaviour
 {
-    // Singleton
+    // Singleton for the player inventory
     public static Inventory Instance { get; set; }
 
     // Inventory slots
@@ -16,9 +16,13 @@ public class Inventory : MonoBehaviour
     private List<GameObject> startingItems;
     [SerializeField]
     private int maxStorageSlots; // Maximum the UI can handle is 15 :/
+    [SerializeField]
+    private int maxExternalSlots;
+    private const int EXTERNAL_SLOTS_PER_SCREEN = 20;
 
     // Inventory physical objects
     private List<GameObject> ArmObjects;
+    private List<GameObject> itemStorages;
     private GameObject inactiveItems;
     private readonly Vector3 holdPosition = new Vector3(0, 0, 0);
     private readonly Vector3 holdRotation = new Vector3(0, 180, 0);
@@ -27,22 +31,33 @@ public class Inventory : MonoBehaviour
     // Inventory internal item slots
     private List<ItemSlot> itemSlotsActive;
     private List<ItemSlot> itemSlotsInactive;
+    private List<ItemSlot> itemSlotsExternal;
 
-    // Inventory UI
+    // Inventory UI GameObjects
     private GameObject InventoryUI;
     [SerializeField]
     private GameObject ItemSlotPrefab;
+    [SerializeField]
+    private GameObject StoragePrefab;
     private GameObject ArmSlots;
     private GameObject StorageSlots;
+    private static GameObject switchStorageButtons;
+    private static GameObject itemControlButtons;
 
+    // Inventory description items
+    internal static Image itemDescriptionImage;
+    internal static TMP_Text itemDescriptionName;
+    internal static TMP_Text itemDescriptionText;
+
+    // Other inventory values
+    public static bool menuActivated = false;
+    public static bool externalStorageOpened = false;
+    public static int storageOpen;
+    private const int STORAGE_MAIN = 0;
+
+    // Not sure what this does - it's not mine and I'm too scared to touch it :/
     public static List<Keys> keyList = new List<Keys>();
     public static int keyCounter = 0;
-
-    public static bool menuActivated = false;
-    internal Image itemDescriptionImage;
-    internal TMP_Text itemDescriptionName;
-    internal TMP_Text itemDescriptionText;
-    private GameObject itemOptions; 
 
     // Keybinds
     [Header("Keybinds:")]
@@ -53,7 +68,6 @@ public class Inventory : MonoBehaviour
     [SerializeField]
     private KeyCode useRightArm;
 
-    
     private void Awake()
     {
         // Singleton
@@ -66,20 +80,27 @@ public class Inventory : MonoBehaviour
             Instance = this;
         }
 
-        // Set internal inventory parameters
+        // Set correct inventory item slots
         this.ArmSlots = GameObject.Find("ArmSlots");
+        this.itemSlotsActive = new List<ItemSlot>();
         this.StorageSlots = GameObject.Find("StorageSlots");
+        this.itemSlotsInactive = new List<ItemSlot>();
+        this.itemSlotsExternal = new List<ItemSlot>();
+
+        // Set other inventory components
         this.InventoryUI = GameObject.Find("InventoryUI");
         this.inactiveItems = GameObject.Find("InactiveItems");
         this.inactiveItems.SetActive(false);
         this.ArmObjects = new List<GameObject>();
-        this.itemSlotsActive = new List<ItemSlot>();
-        this.itemSlotsInactive = new List<ItemSlot>();
-        this.itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
-        this.itemDescriptionImage.enabled = false;
-        this.itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
-        this.itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
-        this.itemOptions = GameObject.Find("ItemOptions");
+        this.itemStorages = new List<GameObject>();
+
+        // Set inventory description items
+        itemDescriptionImage = GameObject.Find("ItemImage").GetComponent<Image>();
+        itemDescriptionImage.enabled = false;
+        itemDescriptionName = GameObject.Find("ItemDescriptionNameText").GetComponent<TMP_Text>();
+        itemDescriptionText = GameObject.Find("ItemDescriptionText").GetComponent<TMP_Text>();
+        switchStorageButtons = GameObject.Find("InventorySwitchButtons");
+        itemControlButtons = GameObject.Find("ItemControlButtons");
 
         // Set arm objects
         foreach(Transform itemSlot in GameObject.Find("InventoryStorage").transform)
@@ -87,27 +108,16 @@ public class Inventory : MonoBehaviour
             ArmObjects.Add(itemSlot.gameObject);
         }
 
-        // Set active item slots
-        ItemSlot itemSlotAdded;
-        for (int i = 0; i < this.transform.GetChild(0).childCount; i++)
+        foreach (Transform itemSlotDisplay in GameObject.Find("InventorySlotsDisplay").transform)
         {
-            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(ArmSlots.transform);
-            itemSlotAdded = ArmSlots.transform.GetChild(i).GetComponent<ItemSlot>();
-            itemSlotAdded.isArm = true;
-            itemSlotAdded.keyPress = (i == 0) ? useLeftArm : useRightArm;
-            itemSlotAdded.storedIndex = i;
-            itemSlotsActive.Add(itemSlotAdded);
+            itemStorages.Add(itemSlotDisplay.gameObject);
         }
 
-        // Set inactive item slots
-        for (int i = 0; i < this.maxStorageSlots; i++)
-        {
-            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(StorageSlots.transform);
-            itemSlotAdded = StorageSlots.transform.GetChild(i).GetComponent<ItemSlot>();
-            itemSlotAdded.isArm = false;
-            itemSlotAdded.storedIndex = i;
-            itemSlotsInactive.Add(itemSlotAdded);
-        }
+        // Create all item slots
+        AddItemSlots(ArmSlots, itemSlotsActive, this.transform.GetChild(0).childCount, STORAGE_MAIN);
+        AddItemSlots(StorageSlots, itemSlotsInactive, this.maxStorageSlots, STORAGE_MAIN);
+        AddExternalStorage();
+        // AddItemSlots(ExternalSlots, itemSlotsExternal, this.maxExternalSlots, 1);
 
         // Fill up inventory with pre-selected items
         foreach (GameObject item in startingItems)
@@ -115,34 +125,98 @@ public class Inventory : MonoBehaviour
             PickupItem(item);
         }
 
+        // Hide all option buttons
+        itemControlButtons.SetActive(false);
+
+        // Set the open storage to the inventory (should always be 0)
+        storageOpen = 0;
+
         // Hide inventory
         this.InventoryUI.SetActive(menuActivated);
     }
 
-    private void Update()
+    private void AddItemSlots(GameObject slotObject, List<ItemSlot> slotList, int slotCount, int storage)
     {
-        // Pick up item
-        if (Input.GetKeyDown(openInventory))
+        ItemSlot itemSlotAdded;
+        for (int i = 0; i < slotCount; i++)
         {
-            menuActivated = !menuActivated;
-            InventoryUI.SetActive(menuActivated);
+            // Create item slot from prefab
+            (Instantiate(ItemSlotPrefab) as GameObject).transform.SetParent(slotObject.transform);
+            itemSlotAdded = slotObject.transform.GetChild(i).GetComponent<ItemSlot>();
+            itemSlotAdded.storedIndex = i;
+            itemSlotAdded.storedStorage = storage;
 
-            if (menuActivated)
+            // Set slot-dependent parameters
+            if (slotObject == this.ArmSlots)
             {
-                // FirstPersonLook owns the cursor and Time.timeScale, asking it
-                // keeps the pointer free AND visible, and stops a click on a
-                // slot from being read as "click to resume"
-                FirstPersonLook.PushUiModal();
+                itemSlotAdded.isArm = true;
+                itemSlotAdded.keyPress = (i == 0) ? useLeftArm : useRightArm;
             }
             else
             {
-                FirstPersonLook.PopUiModal();
-                DeselectAllSlots();
+                itemSlotAdded.isArm = false;
             }
+
+            // Add the slot to a list for easy access
+            slotList.Add(itemSlotAdded);
+        }
+    }
+
+    private void AddExternalStorage()
+    {
+        GameObject storageParent = GameObject.Find("InventorySlotsDisplay");
+        GameObject externalStorage;
+        for (int slotCount = 0; slotCount < maxExternalSlots; slotCount += EXTERNAL_SLOTS_PER_SCREEN) // hardcoded for now
+        {
+            externalStorage = (Instantiate(StoragePrefab) as GameObject);
+            externalStorage.transform.SetParent(storageParent.transform);
+            itemStorages.Add(externalStorage);
+            AddItemSlots(
+                    externalStorage.transform.GetChild(0).gameObject,
+                    itemSlotsExternal,
+                    Math.Min(EXTERNAL_SLOTS_PER_SCREEN, maxExternalSlots - slotCount),
+                    slotCount / EXTERNAL_SLOTS_PER_SCREEN + 1
+            );
+        }
+    }
+
+    private void Update()
+    {
+        // Open inventory
+        if (Input.GetKeyDown(openInventory))
+        {
+            ToggleInventory();
         }
 
-        // Set displayability of item options
-        this.itemOptions.SetActive(ItemSlot.itemIsSelected);
+        // Display the currently selected storage
+        for (int i = 0; i < itemStorages.Count; i++)
+        {
+            itemStorages[i].SetActive(i == storageOpen);
+        }
+
+        // Set switch storage buttons depending on external storage open state
+        switchStorageButtons.SetActive(externalStorageOpened);
+    }
+
+    public void ToggleInventory()
+    {
+        menuActivated = !menuActivated;
+        InventoryUI.SetActive(menuActivated);
+
+        if (menuActivated)
+        {
+            // FirstPersonLook owns the cursor and Time.timeScale, asking it
+            // keeps the pointer free AND visible, and stops a click on a
+            // slot from being read as "click to resume"
+            FirstPersonLook.PushUiModal();
+        }
+        else
+        {
+            FirstPersonLook.PopUiModal();
+            DeselectAllSlots();
+            storageOpen = STORAGE_MAIN;
+            externalStorageOpened = false;
+        }
     }
 
     public void PickupItem(GameObject pickedUpItem)
@@ -153,10 +227,10 @@ public class Inventory : MonoBehaviour
         addedToInventory = ExistingStackExists(pickedUpItem);
 
         // Put item into next active slot
-        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsActive, true, pickedUpItem);
+        if (!addedToInventory) addedToInventory = AttemptAddToInventory(itemSlotsActive, true, pickedUpItem);
 
         // Put item into storage if no active slots are available
-        if (!addedToInventory) addedToInventory = CheckItemSlots(itemSlotsInactive, false, pickedUpItem);
+        if (!addedToInventory) addedToInventory = AttemptAddToInventory(itemSlotsInactive, false, pickedUpItem);
     }
 
     private bool ExistingStackExists(GameObject item)
@@ -204,14 +278,14 @@ public class Inventory : MonoBehaviour
 
     }
 
-    private bool CheckItemSlots(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
+    private bool AttemptAddToInventory(List<ItemSlot> itemSlotsChecking, bool isActiveSlot, GameObject item)
     {
         // Check if a slot is empty
         for (int i = 0; i < itemSlotsChecking.Count; i++)
         {
             if (itemSlotsChecking[i].itemObject == null)
             {
-                AddItemIntoSlot(item, i, isActiveSlot);
+                AddItemIntoSlot(item, i, isActiveSlot, STORAGE_MAIN);
                 return true;
             }
 
@@ -220,7 +294,7 @@ public class Inventory : MonoBehaviour
         return false;
     }
 
-    private void AddItemIntoSlot(GameObject itemAddedObject, int index, bool inActiveSlot)
+    private void AddItemIntoSlot(GameObject itemAddedObject, int index, bool inActiveSlot, int storageStored)
     {
         Item itemAddedItem = itemAddedObject ? itemAddedObject.GetComponent<Item>() : null;
 
@@ -234,7 +308,15 @@ public class Inventory : MonoBehaviour
         else
         {
             itemAddedItem?.transform.SetParent(inactiveItems.transform, false);
-            itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
+            if (storageStored == 0)
+            {
+                itemSlot = itemSlotsInactive[index].GetComponent<ItemSlot>();
+            }
+            else
+            {
+                int insertIndex = index + EXTERNAL_SLOTS_PER_SCREEN * (storageStored - 1);
+                itemSlot = itemSlotsExternal[insertIndex].GetComponent<ItemSlot>();
+            }
         }
 
         // Store basic bookkeeping
@@ -260,8 +342,8 @@ public class Inventory : MonoBehaviour
         int armIndex = itemArm.storedIndex;
 
         // Actually swap items
-        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm);
-        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm);
+        AddItemIntoSlot(itemStorageObject, armIndex, itemArm.isArm, itemArm.storedStorage);
+        AddItemIntoSlot(itemArmObject, storageIndex, itemStorage.isArm, itemStorage.storedStorage);
 
         DeselectAllSlots();
     }
@@ -269,7 +351,7 @@ public class Inventory : MonoBehaviour
     public void DeselectAllSlots()
     {
         // Deselect all item slots
-        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive))
+        foreach (ItemSlot slot in itemSlotsActive.Concat(itemSlotsInactive).Concat(itemSlotsExternal))
         {
             if (slot.selectedSlot) { slot.selectedSlot.SetActive(false); }
             slot.thisItemSelected = false;
@@ -281,6 +363,7 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = "";
 
         ItemSlot.itemIsSelected = false;
+        itemControlButtons.SetActive(false);
     }
 
     public void SetDescription(Item item, Image itemImage)
@@ -289,6 +372,9 @@ public class Inventory : MonoBehaviour
         itemDescriptionText.text = item.description;
         if (itemImage) { itemDescriptionImage.sprite = itemImage.sprite; }
         itemDescriptionImage.enabled = true;
+
+        // Loop through all the option buttons
+        itemControlButtons.SetActive(true);
     }
 
     public static void AddKey(string name, int count)
@@ -313,6 +399,28 @@ public class Inventory : MonoBehaviour
         DeselectAllSlots();
     }
 
+    private void DropItem(GameObject dropItemObject)
+        {
+            Item dropItemItem = dropItemObject.GetComponent<Item>();
+
+            // Place item on the ground at the player's feet
+            dropItemObject.transform.SetParent(null);
+            Vector3 parentPosition = this.transform.parent.transform.position;
+            Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
+            dropItemObject.transform.localPosition = new Vector3(
+                    parentPosition.x,
+                    parentPosition.y,
+                    parentPosition.z
+            );
+            dropItemObject.transform.localRotation = Quaternion.Euler(
+                    this.dropRotation.x,
+                    parentRotation.y + this.dropRotation.y,
+                    this.dropRotation.z
+            );
+
+            dropItemItem.isActive = false;
+        }
+
     public void DropSelectedItemOne()
     {
         ItemSlot itemSelected = ItemSlot.itemSelected;
@@ -332,28 +440,6 @@ public class Inventory : MonoBehaviour
         }
     }
 
-    private void DropItem(GameObject dropItemObject)
-    {
-        Item dropItemItem = dropItemObject.GetComponent<Item>();
-
-        // Place item on the ground at the player's feet
-        dropItemObject.transform.SetParent(null);
-        Vector3 parentPosition = this.transform.parent.transform.position;
-        Vector3 parentRotation = this.transform.parent.transform.rotation.eulerAngles;
-        dropItemObject.transform.localPosition = new Vector3(
-                parentPosition.x,
-                parentPosition.y,
-                parentPosition.z
-        );
-        dropItemObject.transform.localRotation = Quaternion.Euler(
-                this.dropRotation.x,
-                parentRotation.y + this.dropRotation.y,
-                this.dropRotation.z
-        );
-
-        dropItemItem.isActive = false;
-    }
-
     public void DropSelectedItemAll()
     {
         ItemSlot itemSelected = ItemSlot.itemSelected;
@@ -362,9 +448,19 @@ public class Inventory : MonoBehaviour
         DropItem(dropItemObject);
 
         // Internally set it so the item is no longer in the inventory
-        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm);
+        AddItemIntoSlot(null, itemSelected.storedIndex, itemSelected.isArm, itemSelected.storedStorage);
         ItemSlot.dropSelected = true;
 
         DeselectAllSlots();
+    }
+
+    public void SwitchStorageLeft()
+    {
+        storageOpen = (storageOpen + itemStorages.Count - 1) % itemStorages.Count; // Never goes below 0
+    }
+
+    public void SwitchStorageRight()
+    {
+        storageOpen = (storageOpen + 1) % itemStorages.Count; // Never goes above total number of storages
     }
 }

@@ -28,4 +28,14 @@ public abstract class Item : MonoBehaviour
     public Vector3 spawnRotation;
 
     internal KeyCode keyPressRequired { get; set; }
+
+    protected void Awake()
+    {
+        // Add an outline if there isn't one already
+        if (!this.gameObject.GetComponent<Outline>())
+        {
+            Outline outline = this.gameObject.AddComponent<Outline>();
+            outline.enabled = false;
+        }
+    }
 }
