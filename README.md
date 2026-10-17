@@ -28,4 +28,4 @@ A fast-paced first-person shooter roguelike made in Unity where movement and con
 - Mitchell Thomson-Reid (developer)
 - Matheus Mauro Lovatel (devleoper)
 - Anas Khan (developer)
-- Kevin Sabdao (developer
+- Kevin Sabdao (developer)
