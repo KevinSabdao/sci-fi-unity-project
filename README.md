@@ -21,7 +21,7 @@ A fast-paced first-person shooter roguelike made in Unity where movement and con
 - Run "AR-1A.exe"
 
 ## This project was built with:
-- [Unity] as the game engine
+- Unity as the game engine
 
 ## Credits
 - Daniel Bristol (developer)
