@@ -24,7 +24,7 @@ A fast-paced first-person shooter roguelike made in Unity where movement and con
 - [Unity] as the game engine
 
 ## Credits
-- Matthew Bristol (developer)
+- Daniel Bristol (developer)
 - Mitchell Thomson-Reid (developer)
 - Matheus Mauro Lovatel (devleoper)
 - Anas Khan (developer)
