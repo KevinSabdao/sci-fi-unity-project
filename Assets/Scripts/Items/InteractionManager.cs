@@ -12,6 +12,7 @@ public class InteractionManager : MonoBehaviour
     private GameObject hoveredItemPrev = null;
     private const KeyCode pickupKey = KeyCode.F;
 
+
     private void Awake()
     {
         // Create singleton of InteractionManager
@@ -24,7 +25,7 @@ public class InteractionManager : MonoBehaviour
             Instance = this;
         }
     }
-
+    
     private void Update()
     {
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
@@ -59,6 +60,15 @@ public class InteractionManager : MonoBehaviour
             {
                 Inventory.externalStorageOpened = true;
                 Inventory.Instance.ToggleInventory();
+            }
+        }
+        else if (objectHitByRaycast.CompareTag("Shop"))
+        {
+            HighlightObject(objectHitByRaycast);
+
+            if (Input.GetKeyDown(pickupKey))
+            {
+                ShopManager.Instance.ToggleShop();
             }
         }
         else if (hoveredItemCurrent) // Remove highlight if looking at nothing

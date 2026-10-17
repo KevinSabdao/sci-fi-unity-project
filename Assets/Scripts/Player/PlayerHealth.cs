@@ -6,6 +6,7 @@ using UnityEngine.Events;
 // game, and raises events so UI and sounds can react.
 public class PlayerHealth : MonoBehaviour
 {
+    public static PlayerHealth Instance { get; private set; }
     [Header("Health")]
     [SerializeField] float maxHealth = 100f;
 
@@ -32,6 +33,13 @@ public class PlayerHealth : MonoBehaviour
 
     void Awake()
     {
+        // Singleton
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
         Current = maxHealth;
         startPosition = transform.position;
         controller = GetComponent<CharacterController>();

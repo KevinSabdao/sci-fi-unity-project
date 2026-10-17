@@ -7,6 +7,7 @@ public class Bullet : MonoBehaviour
 {
     // overwritten by the Weapon that fires this bullet
     public float damage = 25f;
+    public float lifeStealPercent = 0f;
 
     // one round hurts an enemy once, a single collision can report several
     // contacts in the same frame
@@ -30,5 +31,6 @@ public class Bullet : MonoBehaviour
 
         hasHit = true;
         health.TakeDamage(damage);
+        PlayerHealth.Instance?.Heal(damage * lifeStealPercent);
     }
 }

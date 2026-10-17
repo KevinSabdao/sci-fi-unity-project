@@ -30,6 +30,21 @@ public class Weapon : Item
     // spawns so one prefab can serve guns that hit for different amounts
     public float damage = 25f;
 
+    // base values, used for upgrades
+    private float baseDamage;
+    private float baseShootingDelay;
+    private int baseDurabilityMax;
+
+    [Header("Upgrades")]
+    public int damageLevel;
+    public int durabilityLevel;
+    public int fireRateLevel;
+    public bool automaticUpgradeUnlocked;
+
+    [Header("Attribute")]
+    public bool hasLifeSteal;
+    public int lifeStealLevel;
+
     public enum WeaponModel
     {
         Pistol,
@@ -51,6 +66,9 @@ public class Weapon : Item
     private void Awake()
     {
         base.Awake();
+        baseDamage = damage;
+        baseShootingDelay = shootingDelay;
+        baseDurabilityMax = durabilityMax;
         durability = durabilityMax;
         readyToShoot = true;
         burstBulletsLeft = bulletsPerBurst;
@@ -106,8 +124,11 @@ public class Weapon : Item
 
         // Tell the round how hard this gun hits, without it the bullet is just
         // physics and an enemy never loses health
-        if (bullet.TryGetComponent(out Bullet bulletScript)) bulletScript.damage = damage;
-
+        if (bullet.TryGetComponent(out Bullet bulletScript))
+        {
+            bulletScript.damage = damage;
+            bulletScript.lifeStealPercent = GetLifeStealPercentage();
+        }
         // Point the bullet to face the shooting direction
         bullet.transform.forward = shootingDirection;
 
@@ -169,5 +190,35 @@ public class Weapon : Item
     {
         yield return new WaitForSeconds(delay);
         Destroy(bullet);
+    }
+
+    public void ApplyUpgrades()
+    {
+        damage = baseDamage + (damageLevel * 5);
+
+        durabilityMax = baseDurabilityMax + (durabilityLevel * 25);
+
+        if (currentShootingMode == ShootingMode.Auto)
+        {
+            shootingDelay = Mathf.Max(0.05f, baseShootingDelay - (fireRateLevel * 0.05f));
+        }
+    }
+    public void UnlockAutomaticFire()
+    {
+        currentShootingMode = ShootingMode.Auto;
+        automaticUpgradeUnlocked = true;
+    }
+    public void RepairWeapon()
+    {
+        durability = durabilityMax;
+    }
+    public float GetLifeStealPercentage()
+    {
+        if (!hasLifeSteal)
+        {
+            return 0f;
+        }
+        return lifeStealLevel * 0.05f;
+
     }
 }

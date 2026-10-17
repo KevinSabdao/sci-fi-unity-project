@@ -463,4 +463,8 @@ public class Inventory : MonoBehaviour
     {
         storageOpen = (storageOpen + 1) % itemStorages.Count; // Never goes above total number of storages
     }
+    public IEnumerable<ItemSlot> AllItemSlots
+    {
+        get => itemSlotsActive.Concat(itemSlotsInactive);
+    }
 }
